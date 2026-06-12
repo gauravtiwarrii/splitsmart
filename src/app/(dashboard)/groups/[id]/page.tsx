@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import {
   Users,
   Receipt,
@@ -21,6 +22,11 @@ import {
   Search,
   ChevronRight,
   Info,
+  ArrowRight,
+  ShoppingCart,
+  Utensils,
+  Zap,
+  Plane,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -39,7 +45,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { formatCurrency, formatDate, getInitials } from "@/lib/utils";
+import { formatCurrency, formatDate, getInitials, cn } from "@/lib/utils";
+
+function getCategoryIcon(cat: string) {
+  const name = cat.toLowerCase();
+  if (name.includes("grocery")) return ShoppingCart;
+  if (name.includes("dining") || name.includes("food") || name.includes("cake")) return Utensils;
+  if (name.includes("rent") || name.includes("house") || name.includes("clean")) return Users;
+  if (name.includes("utility") || name.includes("electricity") || name.includes("water") || name.includes("internet")) return Zap;
+  if (name.includes("travel") || name.includes("flight") || name.includes("cab")) return Plane;
+  return Receipt;
+}
 
 interface UserInfo {
   id: string;
@@ -154,6 +170,8 @@ export default function GroupDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
+  const { data: session } = useSession();
+  const currentUserId = session?.user?.id;
   const groupId = params.id as string;
 
   const [group, setGroup] = useState<GroupDetail | null>(null);
@@ -563,70 +581,115 @@ export default function GroupDetailPage() {
               </Link>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 gap-3">
-              {filteredExpenses.map((exp) => (
-                <div
-                  key={exp.id}
-                  className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-950/30 hover:bg-slate-950/70 border border-slate-900 hover:border-slate-800/80 rounded-xl transition-all duration-200 gap-4"
-                >
-                  <div className="flex items-start gap-3.5">
-                    <div className="p-2.5 rounded-lg bg-slate-900 text-emerald-400 border border-slate-800 font-bold shrink-0">
-                      {getInitials(exp.category || "Gen")}
+            <div className="flex flex-col gap-2 bg-card border border-border/80 rounded-xl overflow-hidden shadow-sm divide-y divide-border">
+              {filteredExpenses.map((exp) => {
+                const dateObj = new Date(exp.date);
+                const month = dateObj.toLocaleDateString("en-US", { month: "short" }).toUpperCase();
+                const day = dateObj.getDate();
+                const CatIcon = getCategoryIcon(exp.category);
+
+                // Compute user splits details
+                const mySplit = exp.splits?.find((s: any) => s.userId === currentUserId);
+                const isPayer = exp.paidBy.id === currentUserId;
+                
+                let lentText = "";
+                let lentAmount = 0;
+                let lentClass = "text-muted-foreground";
+
+                if (mySplit) {
+                  if (isPayer) {
+                    lentAmount = exp.convertedAmount - mySplit.owedAmount;
+                    lentText = lentAmount > 0.01 ? "you lent" : "you paid";
+                    lentClass = "text-splitwise-green";
+                  } else {
+                    lentAmount = mySplit.owedAmount;
+                    lentText = "you borrowed";
+                    lentClass = "text-splitwise-orange";
+                  }
+                } else {
+                  if (isPayer) {
+                    lentAmount = exp.convertedAmount;
+                    lentText = "you lent";
+                    lentClass = "text-splitwise-green";
+                  } else {
+                    lentText = "not involved";
+                    lentAmount = 0;
+                    lentClass = "text-muted-foreground/60";
+                  }
+                }
+
+                return (
+                  <div
+                    key={exp.id}
+                    className="group flex flex-row items-center justify-between p-3.5 hover:bg-muted/15 transition-all duration-150 gap-4"
+                  >
+                    <div className="flex items-center gap-3.5 flex-1 min-w-0">
+                      {/* Left: Date Block */}
+                      <div className="flex flex-col items-center justify-center bg-muted/40 border border-border/70 rounded-lg w-10 h-11 shrink-0 text-center select-none py-1">
+                        <span className="text-[7px] font-bold text-muted-foreground uppercase leading-none tracking-wider">{month}</span>
+                        <span className="text-sm font-extrabold text-foreground leading-none mt-0.5">{day}</span>
+                      </div>
+
+                      {/* Middle: Category Icon & Details */}
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted/30 border border-border/80">
+                        <CatIcon className="h-4.5 w-4.5 text-muted-foreground" />
+                      </div>
+
+                      <div className="space-y-0.5 flex-1 min-w-0">
+                        <h4 className="font-semibold text-foreground group-hover:text-splitwise-teal transition-colors text-sm truncate">
+                          {exp.description}
+                        </h4>
+                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground truncate">
+                          <span className="font-bold text-muted-foreground/80">Paid by {isPayer ? "you" : exp.paidBy.name}</span>
+                          <span>•</span>
+                          <span className="capitalize">{exp.category}</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="space-y-0.5">
-                      <h4 className="font-semibold text-slate-100 group-hover:text-emerald-400 transition-colors">
-                        {exp.description}
-                      </h4>
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
-                        <span className="font-medium text-slate-400">Paid by {exp.paidBy.name}</span>
-                        <span>•</span>
-                        <span className="capitalize">{exp.category}</span>
-                        <span>•</span>
-                        <span className="flex items-center gap-0.5">
-                          <Calendar size={12} />
-                          {formatDate(exp.date)}
-                        </span>
-                        {exp.exchangeRate !== 1 && (
-                          <>
-                            <span>•</span>
-                            <Badge variant="outline" className="text-[10px] text-slate-400 px-1 border-slate-800">
-                              USD Rate: {exp.exchangeRate}
-                            </Badge>
-                          </>
+
+                    {/* Right: Splitwise Payer & Lending Columns */}
+                    <div className="flex items-center gap-4 md:gap-6 shrink-0">
+                      {/* Paid details */}
+                      <div className="text-right hidden sm:block">
+                        <div className="text-[10px] text-muted-foreground font-semibold">
+                          {isPayer ? "you paid" : `${exp.paidBy.name} paid`}
+                        </div>
+                        <div className="text-xs font-bold text-foreground mt-0.5">
+                          {formatCurrency(exp.amount, exp.currency)}
+                        </div>
+                      </div>
+
+                      {/* Lending details */}
+                      <div className="text-right min-w-[70px]">
+                        <div className={cn("text-[10px] font-semibold", lentClass)}>
+                          {lentText}
+                        </div>
+                        {lentAmount > 0 && (
+                          <div className={cn("text-xs font-extrabold mt-0.5", lentClass)}>
+                            {formatCurrency(lentAmount, group.currency)}
+                          </div>
                         )}
                       </div>
-                    </div>
-                  </div>
 
-                  <div className="flex items-center justify-between sm:justify-end gap-6 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-900/60">
-                    <div className="text-right">
-                      <div className="font-bold text-slate-100">
-                        {formatCurrency(exp.amount, exp.currency)}
-                      </div>
-                      {exp.currency !== group.currency && (
-                        <div className="text-xs text-slate-500 mt-0.5">
-                          Converted: {formatCurrency(exp.convertedAmount, group.currency)}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Link href={`/expenses/${exp.id}`}>
-                        <Button size="icon" variant="outline" className="border-slate-800 hover:bg-slate-900 hover:text-slate-200 h-8 w-8">
-                          <Info size={14} />
+                      <div className="flex items-center gap-1">
+                        <Link href={`/expenses/${exp.id}`}>
+                          <Button size="icon" variant="ghost" className="hover:bg-muted text-muted-foreground hover:text-splitwise-teal h-8 w-8 rounded-lg shrink-0">
+                            <ArrowRight size={14} />
+                          </Button>
+                        </Link>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleDeleteExpense(exp.id)}
+                          className="hover:bg-red-950/15 hover:text-red-400 h-8 w-8 rounded-lg shrink-0 transition-colors"
+                        >
+                          <Trash2 size={14} />
                         </Button>
-                      </Link>
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        onClick={() => handleDeleteExpense(exp.id)}
-                        className="border-slate-800 hover:border-red-900/50 hover:bg-red-950/10 hover:text-red-400 h-8 w-8 transition-colors"
-                      >
-                        <Trash2 size={14} />
-                      </Button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </TabsContent>

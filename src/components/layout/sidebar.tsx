@@ -196,35 +196,10 @@ function SidebarContent({
 
 /* ---------- Desktop Sidebar ---------- */
 export function Sidebar() {
-  const [collapsed, setCollapsed] = React.useState(false);
-
   return (
-    <>
-      {/* Desktop sidebar */}
-      <aside
-        className={cn(
-          "hidden lg:flex flex-col h-screen sticky top-0 border-r border-border glass-strong transition-all duration-300",
-          collapsed ? "w-[72px]" : "w-64"
-        )}
-      >
-        <SidebarContent
-          collapsed={collapsed}
-          onToggleCollapse={() => setCollapsed(!collapsed)}
-        />
-        {collapsed && (
-          <div className="p-2 pb-4 flex justify-center">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setCollapsed(false)}
-              className="h-8 w-8"
-            >
-              <Menu className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
-      </aside>
-    </>
+    <div className="hidden md:block w-full border border-border/70 rounded-xl bg-card p-2 shadow-sm overflow-hidden">
+      <SidebarContent collapsed={false} />
+    </div>
   );
 }
 

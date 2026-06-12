@@ -1,14 +1,16 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SpendingAreaChart } from "@/components/charts/spending-area-chart";
 import { CategoryDonutChart } from "@/components/charts/category-donut-chart";
 import { TopSpendersBarChart } from "@/components/charts/top-spenders-bar-chart";
-import { formatCurrency, formatRelativeTime, getInitials, getCategoryColor } from "@/lib/utils";
+import { formatCurrency, formatRelativeTime, getInitials, getCategoryColor, cn } from "@/lib/utils";
 import {
   TrendingUp,
   TrendingDown,
@@ -19,6 +21,8 @@ import {
   Utensils,
   Zap,
   Plane,
+  Plus,
+  CheckCircle,
 } from "lucide-react";
 
 /* ============================================================================
@@ -63,13 +67,6 @@ const fallbackTopSpenders = [
   { userId: "3", userName: "Priya", totalSpent: 45800 },
   { userId: "4", userName: "Vikram", totalSpent: 41200 },
   { userId: "5", userName: "Sneha", totalSpent: 38000 },
-];
-
-const outstandingBalances = [
-  { name: "Raj Patel", amount: 4500, type: "owes_you" as const },
-  { name: "Priya Sharma", amount: 2800, type: "you_owe" as const },
-  { name: "Vikram Singh", amount: 3200, type: "owes_you" as const },
-  { name: "Sneha Gupta", amount: 1950, type: "you_owe" as const },
 ];
 
 const fallbackRecentActivity = [
@@ -130,8 +127,14 @@ const fallbackRecentActivity = [
    ============================================================================ */
 
 export default function DashboardPage() {
+  const { data: session } = useSession();
+  const currentUserId = session?.user?.id;
+
   const [data, setData] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(true);
+
+  const [balances, setBalances] = React.useState<any>(null);
+  const [balancesLoading, setBalancesLoading] = React.useState(true);
 
   React.useEffect(() => {
     async function loadDashboard() {
@@ -147,49 +150,81 @@ export default function DashboardPage() {
         setLoading(false);
       }
     }
+
+    async function loadBalances() {
+      try {
+        const res = await fetch("/api/balances?groupId=flatmates-group");
+        const json = await res.json();
+        if (json.success && json.data) {
+          setBalances(json.data);
+        }
+      } catch (err) {
+        console.error("Failed to load balances:", err);
+      } finally {
+        setBalancesLoading(false);
+      }
+    }
+
     loadDashboard();
+    loadBalances();
   }, []);
 
-  // Compute stats grid with professional uniform styles
+  // Compute stats metrics
   const stats = React.useMemo(() => {
     const apiStats = data?.stats;
     const isMock = !apiStats || apiStats.groupCount === 0;
 
-    return [
-      {
-        title: "Total Spent",
-        value: isMock ? mockStats.totalSpent : apiStats.totalSpent,
-        change: isMock ? "+12.5%" : "+8.2%",
-        trend: "up" as const,
-        icon: Receipt,
-        colorClass: "text-emerald-500 bg-emerald-500/10 border border-emerald-500/20",
-      },
-      {
-        title: "Outstanding Balance",
-        value: isMock ? mockStats.outstandingBalance : apiStats.outstandingBalance,
-        change: isMock ? "-8.2%" : (apiStats.outstandingBalance >= 0 ? "+4.1%" : "-2.5%"),
-        trend: isMock ? ("down" as const) : (apiStats.outstandingBalance >= 0 ? ("up" as const) : ("down" as const)),
-        icon: TrendingDown,
-        colorClass: isMock ? "text-amber-500 bg-amber-500/10 border border-amber-500/20" : (apiStats.outstandingBalance >= 0 ? "text-emerald-500 bg-emerald-500/10 border border-emerald-500/20" : "text-amber-500 bg-amber-500/10 border border-amber-500/20"),
-      },
-      {
-        title: "Active Groups",
-        value: isMock ? mockStats.groupCount : apiStats.groupCount,
-        change: isMock ? "+2" : "+0",
-        trend: "up" as const,
-        icon: Users,
-        colorClass: "text-blue-500 bg-blue-500/10 border border-blue-500/20",
-      },
-      {
-        title: "Settlements Recorded",
-        value: isMock ? mockStats.totalSettled : apiStats.totalSettled,
-        change: isMock ? "+3" : "+1",
-        trend: "up" as const,
-        icon: ArrowLeftRight,
-        colorClass: "text-violet-500 bg-violet-500/10 border border-violet-500/20",
-      },
-    ];
+    return {
+      totalSpent: isMock ? mockStats.totalSpent : apiStats.totalSpent,
+      totalSettled: isMock ? mockStats.totalSettled : apiStats.totalSettled,
+      groupCount: isMock ? mockStats.groupCount : apiStats.groupCount,
+    };
   }, [data]);
+
+  // Compute Owe / Owed balances dynamic calculations
+  const { youOwe, youAreOwed, youOweList, youAreOwedList } = React.useMemo(() => {
+    if (balancesLoading || !balances?.pairwiseBalances || !currentUserId) {
+      // Fallback mock balances
+      const oweList = [
+        { toUserName: "Priya Sharma", amount: 2800 },
+        { toUserName: "Sneha Gupta", amount: 1950 },
+      ];
+      const owedList = [
+        { fromUserName: "Raj Patel", amount: 4500 },
+        { fromUserName: "Vikram Singh", amount: 3200 },
+      ];
+      return {
+        youOwe: 4750,
+        youAreOwed: 7700,
+        youOweList: oweList,
+        youAreOwedList: owedList,
+      };
+    }
+
+    const oweList: any[] = [];
+    const owedList: any[] = [];
+    let oweSum = 0;
+    let owedSum = 0;
+
+    balances.pairwiseBalances.forEach((pb: any) => {
+      if (pb.fromUserId === currentUserId) {
+        oweSum += pb.amount;
+        oweList.push({ toUserName: pb.toUserName, amount: pb.amount });
+      } else if (pb.toUserId === currentUserId) {
+        owedSum += pb.amount;
+        owedList.push({ fromUserName: pb.fromUserName, amount: pb.amount });
+      }
+    });
+
+    return {
+      youOwe: oweSum,
+      youAreOwed: owedSum,
+      youOweList: oweList,
+      youAreOwedList: owedList,
+    };
+  }, [balances, balancesLoading, currentUserId]);
+
+  const totalBalance = youAreOwed - youOwe;
 
   // Compute charts and lists data
   const monthlySpending = React.useMemo(() => {
@@ -241,69 +276,167 @@ export default function DashboardPage() {
   }, [data]);
 
   return (
-    <div className="relative space-y-6 min-h-full">
-      {/* Subtle background wash */}
-      <div className="premium-glow-bg top-0 right-1/4" />
-
-      {/* ---------- Stat Cards ---------- */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 relative z-10">
-        {stats.map((stat) => (
-          <Card
-            key={stat.title}
-            className="premium-card overflow-hidden"
-          >
-            <CardContent className="p-6">
-              {loading ? (
-                <div className="space-y-4">
-                  <Skeleton className="h-10 w-10 rounded-lg bg-muted/40" />
-                  <Skeleton className="h-4 w-20 bg-muted/40" />
-                  <Skeleton className="h-8 w-28 bg-muted/40" />
-                </div>
-              ) : (
-                <div className="flex items-start justify-between">
-                  <div className="space-y-2.5">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{stat.title}</p>
-                    <p className="text-3xl font-semibold tracking-tight text-foreground">
-                      {stat.title.includes("Groups") || stat.title.includes("Settlements")
-                        ? stat.value
-                        : formatCurrency(stat.value)}
-                    </p>
-                    <div className="flex items-center gap-1.5">
-                      <div className="flex items-center gap-0.5 rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-500">
-                        {stat.trend === "up" ? (
-                          <TrendingUp className="h-3 w-3" />
-                        ) : (
-                          <TrendingDown className="h-3 w-3" />
-                        )}
-                        <span>{stat.change}</span>
-                      </div>
-                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">vs last month</span>
-                    </div>
-                  </div>
-                  <div
-                    className={`flex h-11 w-11 items-center justify-center rounded-lg ${stat.colorClass} transition-all duration-300`}
-                  >
-                    <stat.icon className="h-4.5 w-4.5" />
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+    <div className="space-y-6">
+      {/* ---------- Splitwise Title Header ---------- */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-foreground">Dashboard</h1>
+          <p className="text-xs text-muted-foreground">Welcome back, {session?.user?.name || "User"}</p>
+        </div>
+        <div className="flex gap-2">
+          <Link href="/expenses/new">
+            <Button className="bg-splitwise-teal hover:bg-splitwise-teal/90 text-white font-semibold flex items-center gap-1.5 shadow-sm text-xs px-3.5 py-1.5 rounded-lg h-9">
+              <Plus className="h-4 w-4" />
+              Add an expense
+            </Button>
+          </Link>
+          <Link href="/settlements">
+            <Button className="bg-splitwise-orange hover:bg-splitwise-orange/90 text-white font-semibold flex items-center gap-1.5 shadow-sm text-xs px-3.5 py-1.5 rounded-lg h-9">
+              <CheckCircle className="h-4 w-4" />
+              Settle up
+            </Button>
+          </Link>
+        </div>
       </div>
 
-      {/* ---------- Charts Row ---------- */}
-      <div className="grid gap-5 lg:grid-cols-7 relative z-10">
+      {/* ---------- Splitwise Balance Summary Widget ---------- */}
+      <div className="grid grid-cols-3 border border-border/80 rounded-xl bg-card p-3 md:p-4 text-center divide-x divide-border shadow-sm">
+        <div className="flex flex-col justify-center py-1">
+          <span className="text-[9px] md:text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Total Balance</span>
+          <span className={cn(
+            "text-sm md:text-base font-bold mt-0.5",
+            totalBalance > 0.01 ? "text-splitwise-green" : (totalBalance < -0.01 ? "text-splitwise-orange" : "text-muted-foreground/60")
+          )}>
+            {totalBalance > 0.01 ? "+" : ""}{formatCurrency(totalBalance)}
+          </span>
+        </div>
+        <div className="flex flex-col justify-center py-1">
+          <span className="text-[9px] md:text-[10px] uppercase font-bold text-muted-foreground tracking-wider">You Owe</span>
+          <span className={cn(
+            "text-sm md:text-base font-bold mt-0.5",
+            youOwe > 0.01 ? "text-splitwise-orange" : "text-muted-foreground/60"
+          )}>
+            {formatCurrency(youOwe)}
+          </span>
+        </div>
+        <div className="flex flex-col justify-center py-1">
+          <span className="text-[9px] md:text-[10px] uppercase font-bold text-muted-foreground tracking-wider">You Are Owed</span>
+          <span className={cn(
+            "text-sm md:text-base font-bold mt-0.5",
+            youAreOwed > 0.01 ? "text-splitwise-green" : "text-muted-foreground/60"
+          )}>
+            {formatCurrency(youAreOwed)}
+          </span>
+        </div>
+      </div>
+
+      {/* ---------- Splitwise Owe / Owed Columns ---------- */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* YOU OWE */}
+        <Card className="premium-card shadow-sm border-border/80">
+          <CardHeader className="py-3.5 border-b border-border bg-muted/20">
+            <CardTitle className="text-xs font-bold uppercase tracking-wider text-splitwise-orange flex items-center gap-1.5">
+              <TrendingDown className="h-4 w-4" />
+              You Owe
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4">
+            {balancesLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-10 w-full rounded-lg bg-muted/40" />
+                <Skeleton className="h-10 w-full rounded-lg bg-muted/40" />
+              </div>
+            ) : youOweList.length === 0 ? (
+              <div className="text-center py-6">
+                <p className="text-xs text-muted-foreground">You do not owe anything! 🎉</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {youOweList.map((item, idx) => (
+                  <div
+                    key={`${item.toUserName}-${idx}`}
+                    className="flex items-center justify-between p-2.5 rounded-lg border border-border/50 bg-muted/5"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Avatar className="h-7 w-7 border">
+                        <AvatarFallback className="text-[9px] bg-secondary text-secondary-foreground font-bold">
+                          {getInitials(item.toUserName)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <span className="text-xs font-semibold">{item.toUserName}</span>
+                        <p className="text-[10px] text-muted-foreground">you owe them</p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-splitwise-orange">
+                      {formatCurrency(item.amount)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* YOU ARE OWED */}
+        <Card className="premium-card shadow-sm border-border/80">
+          <CardHeader className="py-3.5 border-b border-border bg-muted/20">
+            <CardTitle className="text-xs font-bold uppercase tracking-wider text-splitwise-green flex items-center gap-1.5">
+              <TrendingUp className="h-4 w-4" />
+              You Are Owed
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4">
+            {balancesLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-10 w-full rounded-lg bg-muted/40" />
+                <Skeleton className="h-10 w-full rounded-lg bg-muted/40" />
+              </div>
+            ) : youAreOwedList.length === 0 ? (
+              <div className="text-center py-6">
+                <p className="text-xs text-muted-foreground">No one owes you money yet.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {youAreOwedList.map((item, idx) => (
+                  <div
+                    key={`${item.fromUserName}-${idx}`}
+                    className="flex items-center justify-between p-2.5 rounded-lg border border-border/50 bg-muted/5"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Avatar className="h-7 w-7 border">
+                        <AvatarFallback className="text-[9px] bg-secondary text-secondary-foreground font-bold">
+                          {getInitials(item.fromUserName)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <span className="text-xs font-semibold">{item.fromUserName}</span>
+                        <p className="text-[10px] text-muted-foreground">owes you</p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-splitwise-green">
+                      {formatCurrency(item.amount)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ---------- Recharts Row ---------- */}
+      <div className="grid gap-5 lg:grid-cols-7">
         {/* Monthly Spending */}
-        <Card className="lg:col-span-4 premium-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold tracking-tight text-foreground">
+        <Card className="lg:col-span-4 premium-card shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
               Monthly Spending
             </CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <Skeleton className="h-[300px] w-full bg-muted/40 rounded-lg" />
+              <Skeleton className="h-[240px] w-full bg-muted/40 rounded-lg" />
             ) : (
               <SpendingAreaChart data={monthlySpending} />
             )}
@@ -311,16 +444,16 @@ export default function DashboardPage() {
         </Card>
 
         {/* Category Breakdown */}
-        <Card className="lg:col-span-3 premium-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold tracking-tight text-foreground">
+        <Card className="lg:col-span-3 premium-card shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
               Spending by Category
             </CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="flex items-center justify-center h-[300px]">
-                <Skeleton className="h-48 w-48 rounded-full bg-muted/40" />
+              <div className="flex items-center justify-center h-[240px]">
+                <Skeleton className="h-36 w-36 rounded-full bg-muted/40" />
               </div>
             ) : (
               <CategoryDonutChart data={categorySpending} />
@@ -329,16 +462,16 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* ---------- Bottom Row ---------- */}
-      <div className="grid gap-5 lg:grid-cols-12 relative z-10">
+      {/* ---------- Spenders & Activity ---------- */}
+      <div className="grid gap-5 md:grid-cols-2">
         {/* Top Spenders */}
-        <Card className="lg:col-span-4 premium-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold tracking-tight text-foreground">
+        <Card className="premium-card shadow-sm">
+          <CardHeader className="py-3.5 border-b border-border bg-muted/10">
+            <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
               Top Spenders
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4">
             {loading ? (
               <div className="space-y-4">
                 {Array.from({ length: 5 }).map((_, i) => (
@@ -351,65 +484,14 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Outstanding Balances */}
-        <Card className="lg:col-span-4 premium-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold tracking-tight text-foreground">
-              Outstanding Balances
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="space-y-3.5">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className="h-12 w-full rounded-lg bg-muted/40" />
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {outstandingBalances.map((balance) => (
-                  <div
-                    key={balance.name}
-                    className="flex items-center justify-between gap-3.5 rounded-lg border border-border/60 bg-muted/15 p-3.5"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-8 w-8 border border-border shadow-sm">
-                        <AvatarFallback className="text-[10px] bg-secondary text-secondary-foreground font-bold">
-                          {getInitials(balance.name)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{balance.name}</p>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                          {balance.type === "owes_you" ? "Owes you" : "You owe"}
-                        </p>
-                      </div>
-                    </div>
-                    <span
-                      className={`text-xs font-semibold tracking-tight px-2 py-0.5 rounded-full ${
-                        balance.type === "owes_you"
-                          ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
-                          : "bg-rose-500/10 text-rose-500 border border-rose-500/20"
-                      }`}
-                    >
-                      {balance.type === "owes_you" ? "+" : "-"}
-                      {formatCurrency(balance.amount)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
         {/* Recent Activity */}
-        <Card className="lg:col-span-4 premium-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold tracking-tight text-foreground">
+        <Card className="premium-card shadow-sm">
+          <CardHeader className="py-3.5 border-b border-border bg-muted/10">
+            <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
               Recent Activity
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4">
             {loading ? (
               <div className="space-y-4">
                 {Array.from({ length: 5 }).map((_, i) => (
@@ -423,30 +505,30 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1">
                 {recentActivity.map((item: any) => (
                   <div
                     key={item.id}
                     className="flex items-start gap-3.5 group"
                   >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted/30 border border-border/80 transition-all duration-300">
-                      <item.icon className="h-4 w-4 text-muted-foreground" />
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted/30 border border-border/85 transition-all duration-300">
+                      <item.icon className="h-4.5 w-4.5 text-muted-foreground" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-medium text-foreground truncate">{item.title}</p>
+                        <p className="text-xs font-semibold text-foreground truncate">{item.title}</p>
                         {item.amount && (
-                          <span className="text-sm font-semibold tracking-tight text-foreground whitespace-nowrap">
+                          <span className="text-xs font-bold tracking-tight text-foreground whitespace-nowrap">
                             {formatCurrency(item.amount)}
                           </span>
                         )}
                       </div>
                       <div className="flex items-center gap-1.5 mt-0.5">
-                        <p className="text-xs text-muted-foreground truncate">
+                        <p className="text-[10px] text-muted-foreground truncate">
                           {item.userName}
                         </p>
                         <span className="text-[10px] text-muted-foreground/40 font-bold">·</span>
-                        <p className="text-xs text-muted-foreground/80 whitespace-nowrap font-medium">
+                        <p className="text-[10px] text-muted-foreground/80 whitespace-nowrap font-semibold">
                           {formatRelativeTime(item.createdAt)}
                         </p>
                       </div>

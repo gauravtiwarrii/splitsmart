@@ -6,13 +6,13 @@
 
 /* ---------- Light Theme ---------- */
 :root {
-  --background: 0 0% 100%;
+  --background: 210 20% 98%; /* Soft grey backdrop like Splitwise.com */
   --foreground: 240 10% 3.9%;
   --card: 0 0% 100%;
   --card-foreground: 240 10% 3.9%;
   --popover: 0 0% 100%;
   --popover-foreground: 240 10% 3.9%;
-  --primary: 158 80% 35%; /* Brand Emerald / Mint */
+  --primary: 168 76% 44%; /* Splitwise Teal */
   --primary-foreground: 0 0% 100%;
   --secondary: 240 4.8% 95.9%;
   --secondary-foreground: 240 10% 3.9%;
@@ -20,43 +20,43 @@
   --muted-foreground: 240 3.8% 46.1%;
   --accent: 240 4.8% 95.9%;
   --accent-foreground: 240 10% 3.9%;
-  --destructive: 0 84.2% 60.2%;
+  --destructive: 15 100% 59%; /* Splitwise Orange/Coral (You Owe) */
   --destructive-foreground: 0 0% 98%;
-  --border: 240 5.9% 90%;
-  --input: 240 5.9% 90%;
-  --ring: 158 80% 35%;
+  --border: 210 14% 90%; /* Soft border */
+  --input: 210 14% 90%;
+  --ring: 168 76% 44%;
   --radius: 0.5rem;
-  --chart-1: 158 80% 35%;
-  --chart-2: 199 89% 48%;
-  --chart-3: 43 96% 56%;
+  --chart-1: 168 76% 44%;
+  --chart-2: 15 100% 59%;
+  --chart-3: 163 49% 56%;
   --chart-4: 262 83% 58%;
   --chart-5: 346 77% 50%;
 }
 
 /* ---------- Dark Theme ---------- */
 .dark {
-  --background: 240 10% 3.9%; /* Pure deep charcoal zinc-950 */
+  --background: 210 20% 8%; /* Splitwise Dark Backdrop */
   --foreground: 0 0% 98%;
-  --card: 240 10% 5.9%; /* Zinc-900 */
+  --card: 210 16% 12%; /* Dark panel card */
   --card-foreground: 0 0% 98%;
-  --popover: 240 10% 3.9%;
+  --popover: 210 20% 8%;
   --popover-foreground: 0 0% 98%;
-  --primary: 158 80% 40%;
+  --primary: 168 76% 44%; /* Keep Splitwise Teal bright */
   --primary-foreground: 0 0% 100%;
-  --secondary: 240 3.7% 15.9%;
+  --secondary: 210 12% 16%;
   --secondary-foreground: 0 0% 98%;
-  --muted: 240 3.7% 11.9%;
-  --muted-foreground: 240 5% 64.9%;
-  --accent: 240 3.7% 15.9%;
+  --muted: 210 12% 16%;
+  --muted-foreground: 210 10% 60%;
+  --accent: 210 12% 16%;
   --accent-foreground: 0 0% 98%;
-  --destructive: 0 62.8% 30.6%;
+  --destructive: 15 100% 59%;
   --destructive-foreground: 0 0% 98%;
-  --border: 240 5.9% 15%; /* Crisp charcoal border */
-  --input: 240 5.9% 15%;
-  --ring: 158 80% 40%;
-  --chart-1: 158 80% 40%;
-  --chart-2: 199 89% 48%;
-  --chart-3: 43 96% 56%;
+  --border: 210 12% 20%; /* Dark border */
+  --input: 210 12% 20%;
+  --ring: 168 76% 44%;
+  --chart-1: 168 76% 44%;
+  --chart-2: 15 100% 59%;
+  --chart-3: 163 49% 56%;
   --chart-4: 262 83% 58%;
   --chart-5: 346 77% 50%;
 }
@@ -87,6 +87,9 @@
   --color-chart-3: hsl(var(--chart-3));
   --color-chart-4: hsl(var(--chart-4));
   --color-chart-5: hsl(var(--chart-5));
+  --color-splitwise-teal: hsl(168 76% 44%);
+  --color-splitwise-orange: hsl(15 100% 59%);
+  --color-splitwise-green: hsl(163 49% 56%);
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 2px);

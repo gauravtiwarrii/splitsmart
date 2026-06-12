@@ -62,67 +62,69 @@ export function Navbar() {
   const { data: session } = useSession();
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b border-border glass-strong px-4 lg:px-6">
-      {/* Mobile hamburger */}
-      <MobileSidebar />
+    <header className="sticky top-0 z-40 h-16 border-b border-border glass-strong px-4">
+      <div className="w-full max-w-5xl mx-auto h-full flex items-center justify-between gap-4">
+        {/* Mobile hamburger */}
+        <MobileSidebar />
 
-      {/* Left: Title and breadcrumbs */}
-      <div className="flex-1 min-w-0">
-        <h1 className="text-lg font-semibold truncate">{pageTitle}</h1>
-        {breadcrumbs.length > 1 && (
-          <nav className="flex items-center gap-1 text-xs text-muted-foreground">
-            {breadcrumbs.map((crumb, i) => (
-              <React.Fragment key={crumb.href}>
-                {i > 0 && <ChevronRight className="h-3 w-3" />}
-                {i === breadcrumbs.length - 1 ? (
-                  <span className="text-foreground">{crumb.label}</span>
-                ) : (
-                  <Link
-                    href={crumb.href}
-                    className="hover:text-foreground transition-colors"
-                  >
-                    {crumb.label}
-                  </Link>
-                )}
-              </React.Fragment>
-            ))}
-          </nav>
-        )}
+        {/* Left: Title and breadcrumbs */}
+        <div className="flex-1 min-w-0">
+          <h1 className="text-base font-semibold truncate">{pageTitle}</h1>
+          {breadcrumbs.length > 1 && (
+            <nav className="flex items-center gap-1 text-[10px] text-muted-foreground">
+              {breadcrumbs.map((crumb, i) => (
+                <React.Fragment key={crumb.href}>
+                  {i > 0 && <ChevronRight className="h-2 w-2" />}
+                  {i === breadcrumbs.length - 1 ? (
+                    <span className="text-foreground">{crumb.label}</span>
+                  ) : (
+                    <Link
+                      href={crumb.href}
+                      className="hover:text-foreground transition-colors"
+                    >
+                      {crumb.label}
+                    </Link>
+                  )}
+                </React.Fragment>
+              ))}
+            </nav>
+          )}
+        </div>
+
+        {/* Right: User dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger className="flex items-center gap-2 rounded-full p-1 hover:bg-accent transition-colors">
+            <Avatar className="h-8 w-8">
+              <AvatarFallback className="bg-gradient-to-br from-splitwise-teal to-splitwise-green text-white text-xs font-bold">
+                {session?.user?.name ? getInitials(session.user.name) : "U"}
+              </AvatarFallback>
+            </Avatar>
+            <span className="hidden md:block text-sm font-medium">
+              {session?.user?.name || "Loading..."}
+            </span>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem>
+              <User className="h-4 w-4 mr-2" />
+              Profile
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <Settings className="h-4 w-4 mr-2" />
+              Settings
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
+              onClick={() => signOut({ callbackUrl: "/login" })}
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
-
-      {/* Right: User dropdown */}
-      <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center gap-2 rounded-full p-1 hover:bg-accent transition-colors">
-          <Avatar className="h-8 w-8">
-            <AvatarFallback className="bg-gradient-to-br from-emerald-400 to-teal-500 text-white text-xs font-bold">
-              {session?.user?.name ? getInitials(session.user.name) : "U"}
-            </AvatarFallback>
-          </Avatar>
-          <span className="hidden md:block text-sm font-medium">
-            {session?.user?.name || "Loading..."}
-          </span>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuLabel>My Account</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem>
-            <User className="h-4 w-4 mr-2" />
-            Profile
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <Settings className="h-4 w-4 mr-2" />
-            Settings
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
-            onClick={() => signOut({ callbackUrl: "/login" })}
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            Sign Out
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
     </header>
   );
 }

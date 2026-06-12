@@ -2,7 +2,8 @@
 
 SplitSmart is a premium, corporate-grade shared expenses manager designed with a clean, stable fintech user interface modeled after Stripe and Linear. It helps flatmates, travelers, and project teams log expenses, split bills flexibly, detect anomalies in CSV spreadsheets, and settle debts automatically using a greedy simplification algorithm.
 
-🚀 **GitHub Repository**: [github.com/gauravtiwarrii/splitsmart](https://github.com/gauravtiwarrii/splitsmart)
+🚀 **GitHub Repository**: [github.com/gauravtiwarrii/splitsmart](https://github.com/gauravtiwarrii/splitsmart)  
+🌐 **Live Application**: [assignment-cyan-five.vercel.app](https://assignment-cyan-five.vercel.app)
 
 ---
 
@@ -144,4 +145,10 @@ All seed accounts share the password **`password123`**:
 
 ## ☁️ Production Deployment
 
-For detailed steps on database hosting (Neon / Supabase) and deploying to **Vercel**, please refer to the [DEPLOYMENT.md](DEPLOYMENT.md) file.
+The project is hosted live on **Vercel** with a serverless **Neon PostgreSQL** database.
+
+* **Live Deployment URL**: [assignment-cyan-five.vercel.app](https://assignment-cyan-five.vercel.app)
+* **Hosting Platform**: Vercel
+* **Database Provider**: Neon (Serverless Postgres)
+
+For detailed instructions on configuring your own deployment pipeline or database instances, please refer to the [DEPLOYMENT.md](DEPLOYMENT.md) file.

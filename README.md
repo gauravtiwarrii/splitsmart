@@ -152,3 +152,10 @@ The project is hosted live on **Vercel** with a serverless **Neon PostgreSQL** d
 * **Database Provider**: Neon (Serverless Postgres)
 
 For detailed instructions on configuring your own deployment pipeline or database instances, please refer to the [DEPLOYMENT.md](DEPLOYMENT.md) file.
+
+---
+
+## 🤖 Developed With
+
+This project was built, styled, and deployed with the assistance of **Antigravity**, an agentic AI coding assistant designed by **Google DeepMind**. Antigravity co-authored the business logic engine, designed the premium fintech UI, resolved Edge middleware compatibility constraints, and configured the live Vercel and Neon PostgreSQL cloud integration.
+

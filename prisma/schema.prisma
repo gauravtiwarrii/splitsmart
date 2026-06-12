@@ -1,0 +1,346 @@
+// =============================================================================
+// SplitSmart — Prisma Schema
+// =============================================================================
+// Normalized PostgreSQL schema for a shared expenses management application.
+// Supports: multi-currency expenses, flexible split types, membership history,
+// CSV import with anomaly tracking, debt settlements, and full audit logging.
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+/// How an expense is divided among participants
+enum SplitType {
+  EQUAL      // Divided equally among all participants
+  EXACT      // Each participant pays a specific amount
+  PERCENTAGE // Each participant pays a percentage of total
+  SHARES     // Divided by share ratio (e.g., 2:1:1)
+}
+
+/// Supported currencies
+enum Currency {
+  INR
+  USD
+}
+
+/// Role within a group
+enum GroupRole {
+  ADMIN
+  MEMBER
+}
+
+/// Types of anomalies the CSV importer can detect
+enum AnomalyType {
+  DUPLICATE_EXPENSE
+  NEGATIVE_AMOUNT
+  SETTLEMENT_AS_EXPENSE
+  MISSING_PAYER
+  INVALID_SPLIT
+  CURRENCY_MISMATCH
+  DUPLICATE_TRANSACTION_ID
+  FUTURE_DATE
+  AMOUNT_MISMATCH
+  EXPENSE_AFTER_MEMBER_LEFT
+  EXPENSE_BEFORE_MEMBER_JOINED
+  INVALID_MEMBER_NAME
+}
+
+/// Severity classification for import anomalies
+enum AnomalySeverity {
+  ERROR   // Must be resolved before import
+  WARNING // Should be reviewed, can be overridden
+  INFO    // Informational, auto-handled
+}
+
+/// Resolution status for an anomaly
+enum AnomalyResolution {
+  PENDING   // Not yet reviewed
+  APPROVED  // User approved the suggested action
+  REJECTED  // User rejected — row will be skipped
+  MODIFIED  // User provided a manual fix
+  AUTO_RESOLVED // System auto-resolved (e.g., currency conversion)
+}
+
+/// Status of a CSV import session
+enum ImportStatus {
+  PENDING    // File uploaded, not yet parsed
+  PROCESSING // Currently parsing and detecting anomalies
+  REVIEW     // Anomalies detected, awaiting user review
+  IMPORTING  // User approved, importing rows
+  COMPLETED  // Import finished successfully
+  FAILED     // Import failed with errors
+}
+
+// =============================================================================
+// USER — Application users with authentication
+// =============================================================================
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  passwordHash  String
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  groupMemberships GroupMember[]
+  createdGroups    Group[]          @relation("GroupCreator")
+  paidExpenses     Expense[]        @relation("ExpensePayer")
+  expenseSplits    ExpenseSplit[]
+  settlementsFrom  Settlement[]     @relation("SettlementPayer")
+  settlementsTo    Settlement[]     @relation("SettlementReceiver")
+  importSessions   ImportSession[]
+  resolvedAnomalies ImportAnomaly[] @relation("AnomalyResolver")
+  auditLogs        AuditLog[]
+  createdExpenses  Expense[]        @relation("ExpenseCreator")
+
+  @@map("users")
+}
+
+// =============================================================================
+// GROUP — Expense sharing groups (e.g., "Flatmates", "Goa Trip")
+// =============================================================================
+model Group {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  currency    Currency @default(INR) // Default currency for the group
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  createdBy      User            @relation("GroupCreator", fields: [createdById], references: [id])
+  members        GroupMember[]
+  expenses       Expense[]
+  settlements    Settlement[]
+  importSessions ImportSession[]
+
+  @@map("groups")
+}
+
+// =============================================================================
+// GROUP MEMBER — Tracks membership history with join/leave dates
+// =============================================================================
+// Design Decision: We store joinedAt/leftAt instead of a simple boolean
+// so we can validate whether a member was active when an expense was created.
+// This is critical for the CSV import anomaly detection (e.g., detecting
+// expenses after a member left or before they joined).
+// =============================================================================
+model GroupMember {
+  id       String    @id @default(cuid())
+  userId   String
+  groupId  String
+  role     GroupRole @default(MEMBER)
+  joinedAt DateTime  @default(now())
+  leftAt   DateTime? // null = currently active
+  isActive Boolean   @default(true)
+
+  // Relations
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, groupId, joinedAt]) // A user can rejoin a group
+  @@index([groupId, isActive])
+  @@map("group_members")
+}
+
+// =============================================================================
+// EXPENSE — Individual expense records with multi-currency support
+// =============================================================================
+// Design Decision: We store both the original amount/currency AND the
+// converted amount in the group's base currency. This ensures:
+// 1. No data loss — original transaction values are preserved
+// 2. Consistent balance calculations using convertedAmount
+// 3. Full audit trail of exchange rates used
+// =============================================================================
+model Expense {
+  id              String    @id @default(cuid())
+  groupId         String
+  paidById        String    // Who paid for this expense
+  createdById     String    // Who created this record (may differ from payer)
+  amount          Float     // Original amount in original currency
+  currency        Currency  // Original currency
+  exchangeRate    Float     @default(1.0) // Rate used for conversion
+  convertedAmount Float     // Amount in group's base currency
+  category        String    @default("General")
+  description     String
+  notes           String?
+  date            DateTime  // When the expense occurred
+  splitType       SplitType @default(EQUAL)
+  transactionId   String?   // Optional external reference (from CSV import)
+  isDeleted       Boolean   @default(false) // Soft delete for audit trail
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  group     Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  paidBy    User           @relation("ExpensePayer", fields: [paidById], references: [id])
+  createdBy User           @relation("ExpenseCreator", fields: [createdById], references: [id])
+  splits    ExpenseSplit[]
+
+  @@index([groupId, date])
+  @@index([groupId, category])
+  @@index([transactionId])
+  @@map("expenses")
+}
+
+// =============================================================================
+// EXPENSE SPLIT — How each expense is divided among participants
+// =============================================================================
+// Design Decision: We store the computed owedAmount for each participant
+// regardless of split type. This simplifies balance calculations — we always
+// just sum owedAmount. The percentage/shares fields are kept for audit purposes.
+// =============================================================================
+model ExpenseSplit {
+  id         String @id @default(cuid())
+  expenseId  String
+  userId     String
+  amount     Float  // The amount this user owes (in expense currency)
+  percentage Float? // Only for PERCENTAGE splits (0-100)
+  shares     Int?   // Only for SHARES splits
+  owedAmount Float  // Computed: amount in group base currency after conversion
+
+  // Relations
+  expense Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@unique([expenseId, userId]) // Each user appears once per expense
+  @@index([userId])
+  @@map("expense_splits")
+}
+
+// =============================================================================
+// SETTLEMENT — Records of debt payments between members
+// =============================================================================
+model Settlement {
+  id         String   @id @default(cuid())
+  groupId    String
+  payerId    String   // Who is paying (the debtor)
+  receiverId String   // Who is receiving (the creditor)
+  amount     Float
+  currency   Currency @default(INR)
+  notes      String?
+  settledAt  DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  // Relations
+  group    Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  payer    User  @relation("SettlementPayer", fields: [payerId], references: [id])
+  receiver User  @relation("SettlementReceiver", fields: [receiverId], references: [id])
+
+  @@index([groupId])
+  @@map("settlements")
+}
+
+// =============================================================================
+// IMPORT SESSION — Tracks each CSV import attempt
+// =============================================================================
+model ImportSession {
+  id           String       @id @default(cuid())
+  groupId      String
+  userId       String       // Who initiated the import
+  filename     String
+  totalRows    Int          @default(0)
+  importedRows Int          @default(0)
+  skippedRows  Int          @default(0)
+  status       ImportStatus @default(PENDING)
+  summary      Json?        // JSON summary of import results
+  startedAt    DateTime     @default(now())
+  completedAt  DateTime?
+
+  // Relations
+  group     Group           @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user      User            @relation(fields: [userId], references: [id])
+  anomalies ImportAnomaly[]
+
+  @@index([groupId])
+  @@map("import_sessions")
+}
+
+// =============================================================================
+// IMPORT ANOMALY — Individual issues detected during CSV import
+// =============================================================================
+// Design Decision: We store the complete rawData (original CSV row as JSON)
+// so users can always see exactly what was in the file. The resolution field
+// tracks what action was taken, creating a complete audit trail.
+// =============================================================================
+model ImportAnomaly {
+  id              String            @id @default(cuid())
+  sessionId       String
+  rowNumber       Int               // Row number in original CSV (1-indexed)
+  type            AnomalyType
+  severity        AnomalySeverity
+  description     String            // Human-readable description
+  suggestedAction String            // What we recommend doing
+  rawData         Json              // Original CSV row data
+  field           String?           // Which field has the issue
+  currentValue    String?           // Current problematic value
+  suggestedValue  String?           // What we suggest instead
+  resolution      AnomalyResolution @default(PENDING)
+  resolutionNote  String?           // User's note about resolution
+  resolvedById    String?           // Who resolved this
+  resolvedAt      DateTime?
+
+  // Relations
+  session    ImportSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  resolvedBy User?         @relation("AnomalyResolver", fields: [resolvedById], references: [id])
+
+  @@index([sessionId, severity])
+  @@map("import_anomalies")
+}
+
+// =============================================================================
+// EXCHANGE RATE — Historical exchange rates for currency conversion
+// =============================================================================
+model ExchangeRate {
+  id            String   @id @default(cuid())
+  fromCurrency  Currency
+  toCurrency    Currency
+  rate          Float    // 1 unit of fromCurrency = rate units of toCurrency
+  source        String   @default("manual") // e.g., "manual", "api", "import"
+  effectiveDate DateTime
+  createdAt     DateTime @default(now())
+
+  @@unique([fromCurrency, toCurrency, effectiveDate])
+  @@index([fromCurrency, toCurrency])
+  @@map("exchange_rates")
+}
+
+// =============================================================================
+// AUDIT LOG — Complete audit trail for all data changes
+// =============================================================================
+// Design Decision: We store oldValue/newValue as JSON strings. This allows
+// users to click on any balance and trace back through every contributing
+// change. The entityType + entityId combo lets us query all changes for
+// any specific record.
+// =============================================================================
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String
+  action     String   // e.g., "CREATE", "UPDATE", "DELETE", "IMPORT", "SETTLE"
+  entityType String   // e.g., "Expense", "Settlement", "GroupMember"
+  entityId   String   // ID of the affected record
+  oldValue   Json?    // Previous state (null for CREATE)
+  newValue   Json?    // New state (null for DELETE)
+  metadata   Json?    // Additional context (e.g., import session ID)
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([userId, createdAt])
+  @@map("audit_logs")
+}

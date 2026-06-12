@@ -1,0 +1,53 @@
+transaction_id,date,description,amount,currency,paid_by,split_between,split_type,category,notes
+TXN001,2025-01-05,Groceries - Weekly,2400,INR,Aisha,"Aisha,Rohan,Priya,Meera",EQUAL,Groceries,Weekly grocery run
+TXN002,2025-01-10,Electricity Bill January,3200,INR,Rohan,"Aisha,Rohan,Priya,Meera",EQUAL,Utilities,Monthly electricity
+TXN003,2025-01-15,Internet Bill,1500,INR,Priya,"Aisha,Rohan,Priya,Meera",EQUAL,Utilities,Broadband monthly
+TXN004,2025-01-20,Dinner at Olive Garden,4800,INR,Meera,"Aisha,Rohan,Priya,Meera",EQUAL,Dining,Birthday dinner
+TXN005,2025-01-25,House Cleaning Supplies,850,INR,Aisha,"Aisha,Rohan,Priya,Meera",EQUAL,Household,Cleaning supplies
+TXN006,2025-02-01,Groceries - Weekly,2600,INR,Rohan,"Aisha,Rohan,Priya,Meera",EQUAL,Groceries,Weekly grocery
+TXN007,2025-02-05,Water Bill,600,INR,Priya,"Aisha,Rohan,Priya,Meera",EQUAL,Utilities,Monthly water
+TXN008,2025-02-10,Netflix Subscription,649,INR,Aisha,"Aisha,Rohan,Priya,Meera",EQUAL,Entertainment,Shared Netflix
+TXN009,2025-02-14,Valentine's Day Dinner,3200,INR,Rohan,"Rohan,Priya",EQUAL,Dining,Date night
+TXN010,2025-02-20,Groceries - Weekly,2200,INR,Meera,"Aisha,Rohan,Priya,Meera",EQUAL,Groceries,Weekly grocery
+TXN001,2025-01-05,Groceries - Weekly,2400,INR,Aisha,"Aisha,Rohan,Priya,Meera",EQUAL,Groceries,Weekly grocery run
+TXN011,2025-02-25,Gym Membership,5000,INR,Aisha,"Aisha,Rohan",EQUAL,Fitness,Joint gym membership
+TXN012,2025-03-01,Rent - March,48000,INR,Rohan,"Aisha,Rohan,Priya,Meera",EQUAL,Rent,Monthly rent
+TXN013,2025-03-05,Groceries - Weekly,2800,INR,Priya,"Aisha,Rohan,Priya,Meera",EQUAL,Groceries,Weekly grocery
+TXN014,2025-03-08,Settlement - Rohan to Priya,1200,INR,Rohan,Priya,EQUAL,General,Settling up for past expenses
+TXN015,2025-03-10,Electricity Bill March,3600,INR,Meera,"Aisha,Rohan,Priya,Meera",EQUAL,Utilities,Monthly electricity
+TXN016,2025-03-12,Trip to Goa - Flights,45000,INR,Aisha,"Aisha,Rohan,Priya,Meera,Dev",EQUAL,Travel,Goa trip flights
+TXN017,2025-03-13,Trip to Goa - Hotel,32000,INR,Dev,"Aisha,Rohan,Priya,Meera,Dev",EQUAL,Travel,Hotel booking 3 nights
+TXN018,2025-03-14,Trip to Goa - Dinner,6500,INR,Rohan,"Aisha,Rohan,Priya,Meera,Dev",EQUAL,Dining,Group dinner at beach shack
+TXN019,2025-03-15,Trip to Goa - Water Sports,8000,INR,Priya,"Aisha,Rohan,Priya,Dev",EQUAL,Entertainment,Parasailing and jet ski
+TXN020,2025-03-15,Trip to Goa - Shopping,2500,USD,Dev,"Aisha,Rohan,Priya,Meera,Dev",EQUAL,Shopping,Souvenir shopping in USD
+TXN021,2025-03-20,Cab to Airport,-500,INR,Aisha,"Aisha,Rohan,Priya,Dev",EQUAL,Travel,Negative amount entry
+TXN022,2025-03-25,Groceries - Weekly,2100,INR,Meera,"Aisha,Rohan,Priya,Meera",EQUAL,Groceries,Last grocery before Meera leaves
+TXN023,2025-03-28,Farewell Dinner for Meera,5500,INR,Aisha,"Aisha,Rohan,Priya,Meera",EQUAL,Dining,Farewell dinner
+TXN024,2025-03-30,Settlement - Meera to Aisha,3500,INR,Meera,Aisha,EQUAL,General,Final settlement before leaving
+TXN025,2025-04-01,Rent - April,48000,INR,Rohan,"Aisha,Rohan,Priya",EQUAL,Rent,Monthly rent after Meera left
+TXN026,2025-04-05,Groceries - Weekly,1800,INR,Priya,"Aisha,Rohan,Priya",EQUAL,Groceries,Weekly grocery
+TXN027,2025-04-10,Electricity Bill April,3100,INR,Aisha,"Aisha,Rohan,Priya",EQUAL,Utilities,Monthly electricity
+TXN028,2025-04-10,Meera's Share of Internet,375,INR,Meera,"Aisha,Rohan,Priya,Meera",EQUAL,Utilities,Expense after Meera left the group
+TXN029,2025-04-12,Amazon Prime Subscription,1499,INR,,"Aisha,Rohan,Priya",EQUAL,Entertainment,Missing payer field
+TXN030,2025-04-15,Welcome Lunch for Sam,3200,INR,Aisha,"Aisha,Rohan,Priya,Sam",EQUAL,Dining,Sam joins the flat
+TXN031,2025-04-18,Groceries - Weekly,2300,INR,Sam,"Aisha,Rohan,Priya,Sam",EQUAL,Groceries,First grocery by Sam
+TXN032,2025-04-20,Dinner Party,4200,INR,Rohan,"Aisha,Rohan,Priya,Sam",PERCENTAGE,Dining,Percentages: 30/25/25/20
+TXN033,2025-04-22,Household Items,3600,INR,Priya,"Aisha,Rohan,Priya,Sam",SHARES,Household,Shares: 2/1/1/1
+TXN034,2025-04-25,Movie Night,1600,INR,Sam,"Aisha,Rohan,Priya,Sam",EXACT,Entertainment,Exact: 500/400/400/300
+TXN035,2025-04-28,Groceries Special,5200,INR,Aisha,"Aisha,Rohan,Priya,Sam",PERCENTAGE,Groceries,Invalid: Percentages sum to 110%
+TXN036,2025-05-01,Rent - May,48000,INR,Rohan,"Aisha,Rohan,Priya,Sam",EQUAL,Rent,Monthly rent
+TXN037,2025-05-03,Internet Bill May,1500,INR,Priya,"Aisha,Rohan,Priya,Sam",EQUAL,Utilities,Broadband
+TXN038,2025-05-05,Groceries - Weekly,2400,INR,Rohaan,"Aisha,Rohan,Priya,Sam",EQUAL,Groceries,Typo in payer name
+TXN039,2025-05-08,Online Course,49.99,USD,Aisha,"Aisha,Rohan",EQUAL,Education,USD transaction
+TXN040,2025-05-10,Paid back Aisha for course,25,USD,Rohan,Aisha,EQUAL,General,Settlement logged as expense in USD
+TXN041,2025-05-12,Birthday Cake,1200,INR,Sam,"Aisha,Rohan,Priya,Sam",EQUAL,Dining,Priya's birthday
+TXN042,2025-05-15,Electricity Bill May,3400,INR,Aisha,"Aisha,Rohan,Priya,Sam",EQUAL,Utilities,Monthly electricity
+TXN043,2025-12-25,Christmas Party,8000,INR,Rohan,"Aisha,Rohan,Priya,Sam",EQUAL,Dining,Future date - hasn't happened yet
+TXN044,2025-05-20,Groceries - Weekly,2600,INR,Priya,"Aisha,Rohan,Priya,Sam",EQUAL,Groceries,Weekly grocery
+TXN036,2025-05-01,Rent - May,48500,INR,Rohan,"Aisha,Rohan,Priya,Sam",EQUAL,Rent,Duplicate TXN ID with different amount
+TXN045,2025-05-22,Plumber Visit,800,INR,Sam,"Aisha,Rohan,Priya,Sam",EQUAL,Household,Emergency plumbing
+TXN046,2025-05-25,Groceries by Dev,1800,INR,Dev,"Aisha,Rohan,Priya,Sam,Dev",EQUAL,Groceries,Dev not in group anymore
+TXN047,2025-03-01,Pre-join expense by Sam,2000,INR,Sam,"Aisha,Rohan,Priya,Sam",EQUAL,General,Sam wasn't a member yet in March
+TXN048,2025-05-28,Gas Cylinder,1100,INR,Rohan,"Aisha,Rohan,Priya,Sam",EQUAL,Household,Monthly gas
+TXN049,2025-05-30,Weekend Brunch,3800,INR,Aisha,"Aisha,Rohan,Priya,Sam",EQUAL,Dining,End of month treat
+TXN050,2025-05-30,Settlement - Sam to Rohan,5000,INR,Sam,Rohan,EQUAL,General,Monthly settlement

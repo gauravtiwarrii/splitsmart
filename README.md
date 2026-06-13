@@ -155,7 +155,9 @@ For detailed instructions on configuring your own deployment pipeline or databas
 
 ---
 
-## 🤖 Developed With
+## 🤖 AI Tools Used
 
-This project was built, styled, and deployed with the assistance of **Antigravity**, an agentic AI coding assistant designed by **Google DeepMind**. Antigravity co-authored the business logic engine, designed the premium fintech UI, resolved Edge middleware compatibility constraints, and configured the live Vercel and Neon PostgreSQL cloud integration.
+This project was built with the assistance of **Antigravity**, an agentic AI coding assistant designed by **Google DeepMind**. Antigravity co-authored the business logic engine, designed the premium fintech UI, resolved Edge middleware compatibility constraints, and configured the live Vercel and Neon PostgreSQL cloud integration.
+
+For full details on AI usage, key prompts, and concrete cases where the AI produced incorrect output, see [AI_USAGE.md](AI_USAGE.md).
 

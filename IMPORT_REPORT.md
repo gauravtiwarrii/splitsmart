@@ -1,60 +1,34 @@
-# SplitSmart — CSV Import Report
+# Import Pipeline Report
 
-This report summarizes the results of importing the CSV expense export sheet into the **Flatmates** group. It lists all data anomalies detected by our 12-rule parser engine and the resolution actions taken by the administrator.
+## Overview
+The provided `expenses_export.csv` data file is heavily polluted with inconsistencies, manual overrides, and typos. Standard one-shot imports would fail immediately or corrupt the ledger. We designed an orchestrator and 16 detector rules to parse, flag, and help the user resolve these issues safely.
 
----
+## Data Characteristics (Real CSV)
+- **Total Rows**: 43 (1 header, 42 data rows)
+- **Timeframe**: Feb 2026 – Apr 2026
+- **Currencies**: INR, USD
+- **Members**: Aisha, Rohan, Priya, Meera (left Mar 31), Dev (visited Feb/Mar), Sam (joined Apr 8).
 
-## 📈 Session Summary
+## Detected Anomalies & Resolutions
 
-*   **File Name**: `expenses_export.csv`
-*   **Import Group**: `Flatmates`
-*   **Base Currency**: `INR (₹)`
-*   **Triggered By**: `Aisha` (Group Administrator)
-*   **Execution Time**: June 12, 2026 — 21:14 UTC
-*   **Status**: `COMPLETED`
+| # | Anomaly Type | Occurrences | Resolution Strategy |
+|:---|:---|:---|:---|
+| 1 | `DUPLICATE_EXPENSE` | 2 | Flags exact duplicates (e.g. Marina Bites dinner). User reviews and deletes one. |
+| 2 | `FORMAT_ISSUES` | 3 | Addressed entirely in the parsing layer (`1,200` stripped, whitespace trimmed, floating point math rounded). |
+| 3 | `AMBIGUOUS_DATE` | 1 | "04/05/2026" flagged for manual confirmation. |
+| 4 | `INVALID_MEMBER_NAME` | 3 | Identifies typos (`priya`, `Priya S`, `rohan `). Levenshtein fuzzy matching suggests the correct user. |
+| 5 | `MISSING_PAYER` | 1 | Row 13 has no `paid_by`. Hard blocker (ERROR level). User must select a payer to import. |
+| 6 | `MISSING_CURRENCY` | 1 | Row 28 has empty currency. Defaults to INR but warns user. |
+| 7 | `SETTLEMENT_AS_EXPENSE` | 2 | Rows 14 and 38 flagged. Approving the anomaly routes the data to the `Settlement` table instead of the `Expense` table. |
+| 8 | `INVALID_SPLIT` | 1 | Row 15 (Percentages sum to 110%) flagged. User must adjust percentages. |
+| 9 | `CONFLICTING_SPLIT_INFO`| 1 | Row 42 claims `equal` but provides shares in `split_details`. User prompted to change split type to `SHARES`. |
+| 10| `EXPENSE_AFTER_MEMBER_LEFT`| 1 | Meera included in April Groceries (she left in March). User must remove her from the split. |
+| 11| `NEGATIVE_AMOUNT` | 1 | -30 USD refund. Suggested action: convert to absolute value or discard. |
+| 12| `ZERO_AMOUNT` | 1 | 0 INR entry. Suggested action: provide amount or discard. |
 
-### 📊 Import Statistics
-
-| Metric | Count | Details |
-| :--- | :--- | :--- |
-| **Total Rows Processed** | 52 | Total spreadsheet entries. |
-| **Imported Successfully** | 48 | Appended to the ledger. |
-| **Skipped / Excluded** | 4 | Dropped due to errors or redundancies. |
-| **Anomalies Detected** | 15 | Anomalous items flagged for verification. |
-| **Auto-Resolved** | 2 | Auto-converted currencies. |
-| **Manual / Approved Fixes** | 9 | Adjusted by user in the wizard. |
-
----
-
-## ⚠️ Anomaly Audit Log & Resolution Actions
-
-The table below lists every anomaly flagged by the system, its severity, type, and the exact resolution action taken during the wizard stage:
-
-| Row | Transaction ID | Field | Anomaly Type | Severity | Description | Resolution / Action Taken |
-| :---: | :--- | :--- | :--- | :---: | :--- | :--- |
-| **12** | `TXN001` | `description` | `DUPLICATE_EXPENSE` | 🟡 **WARNING** | Row 12 is a duplicate of Row 2 (same description, amount, date, paidBy). | **REJECTED**: Row was skipped and excluded from import to prevent double-billing. |
-| **12** | `TXN001` | `transactionId` | `DUPLICATE_TRANSACTION_ID` | 🟡 **WARNING** | Transaction ID `TXN001` already appeared in Row 2. | **REJECTED**: Auto-excluded along with the duplicate row. |
-| **16** | `TXN014` | `description` | `SETTLEMENT_AS_EXPENSE` | 🟡 **WARNING** | Description "Settlement - Rohan to Priya" looks like a payback, not a shared expense. | **APPROVED**: Converted to a proper Settlement record in the database rather than an Expense. |
-| **22** | `TXN020` | `currency` | `CURRENCY_MISMATCH` | 🔵 **INFO** | Transaction in `USD` differs from group base currency `INR`. | **AUTO_RESOLVED**: Exchange rate converter applied (USD/INR @ `83.5`), logging $2,500 USD as ₹2,08,750 INR. |
-| **23** | `TXN021` | `amount` | `NEGATIVE_AMOUNT` | 🔴 **ERROR** | Negative amount detected (`-500`) for "Cab to Airport". | **APPROVED**: Converted amount to absolute positive value (`500`) as verified by the user. |
-| **26** | `TXN024` | `description` | `SETTLEMENT_AS_EXPENSE` | 🟡 **WARNING** | Description "Settlement - Meera to Aisha" looks like a payback, not a shared expense. | **APPROVED**: Converted to a proper Settlement record in the database. |
-| **30** | `TXN028` | `date` | `EXPENSE_AFTER_MEMBER_LEFT` | 🟡 **WARNING** | Expense date `2025-04-10` is after "Meera" left the group (`2025-03-31`). | **MODIFIED**: Removed Meera from the split; divided the internet bill equally among remaining members (Aisha, Rohan, Priya). |
-| **31** | `TXN029` | `paidBy` | `MISSING_PAYER` | 🔴 **ERROR** | Paid by field is empty for "Amazon Prime Subscription". | **MODIFIED**: Manually mapped to "Aisha" who verified she paid for the subscription. |
-| **37** | `TXN035` | `splitType` | `INVALID_SPLIT` | 🟡 **WARNING** | Percentage splits sum to `110%` instead of `100%` for "Groceries Special". | **MODIFIED**: Re-split the percentages equally among active members to total 100%. |
-| **40** | `TXN038` | `paidBy` | `INVALID_MEMBER_NAME` | 🟡 **WARNING** | Payer name "Rohaan" is not a group member. | **APPROVED**: Accepted fuzzy suggestion (Levenshtein distance 1) mapping "Rohaan" ➡️ "Rohan". |
-| **41** | `TXN039` | `currency` | `CURRENCY_MISMATCH` | 🔵 **INFO** | Transaction in `USD` differs from group base currency `INR`. | **AUTO_RESOLVED**: Converted using current rate (USD/INR @ `83.5`), logging $49.99 USD as ₹4,174.17 INR. |
-| **42** | `TXN040` | `description` | `SETTLEMENT_AS_EXPENSE` | 🟡 **WARNING** | Description "Paid back Aisha for course" looks like a payback, not a shared expense. | **APPROVED**: Recorded as a USD-to-INR converted Settlement record in the database. |
-| **45** | `TXN043` | `date` | `FUTURE_DATE` | 🟡 **WARNING** | Expense date `2025-12-25` is in the future. | **APPROVED**: Allowed import since it was a pre-dated booking transaction for Christmas party. |
-| **47** | `TXN036` | `amount` | `AMOUNT_MISMATCH` | 🔴 **ERROR** | Same Transaction ID `TXN036` has amount `48500` here but `48000` in Row 38. | **REJECTED**: Skipped the conflicting row. Rent remains recorded as ₹48,000 INR from Row 38. |
-| **49** | `TXN046` | `paidBy` | `INVALID_MEMBER_NAME` | 🔴 **ERROR** | Payer "Dev" is no longer a member of the group on `2025-05-25` (left `2025-03-16`). | **REJECTED**: Row skipped. Dev had already checked out of the flat and could not be billed. |
-| **50** | `TXN047` | `date` | `EXPENSE_BEFORE_MEMBER_JOINED` | 🟡 **WARNING** | Expense date `2025-03-01` is before "Sam" joined the group (`2025-04-15`). | **MODIFIED**: Removed Sam from the bill split; split only among members who were active in March. |
-
----
-
-## 🛡️ Database Verification Log
-
-After completing the import resolutions:
-1. **Expenses Table**: Created 44 new records in the `expenses` table.
-2. **Expense Splits**: Populated 140 participant debt splits in the `expense_splits` table.
-3. **Settlements Table**: Recorded 4 repayments in the `settlements` table.
-4. **Audit Logs Table**: Appended 48 `CREATE`/`IMPORT` entries with complete database change logs in the `audit_logs` table.
+## Import Flow Experience
+1. User uploads the `expenses_export.csv`.
+2. The parsing engine standardizes dates (e.g., converting "Mar 14" to "2026-03-14") and aliases split types (`unequal` → `EXACT`).
+3. The orchestrator runs all 16 detectors.
+4. The user is presented with a Review screen where ERRORs must be fixed, and WARNINGs can be approved or modified.
+5. The Execution phase maps the final data to `Expense`, `ExpenseSplit`, or `Settlement` tables appropriately.

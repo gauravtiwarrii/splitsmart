@@ -11,8 +11,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { parseCSVString } from "@/lib/csv-parser";
-import { detectAnomalies } from "@/lib/anomaly-detector";
+import { detectAnomalies, parseSplitDetails } from "@/lib/anomaly-detector";
 import type { AnomalyResolution, Currency, SplitType } from "@prisma/client";
+import type { ParsedCSVRow } from "@/types";
 
 // =============================================================================
 // POST /api/import — Main import endpoint (handles different actions via body)
@@ -69,7 +70,7 @@ async function handleParse(formData: FormData, userId: string) {
   // Parse CSV into structured rows
   const parsedRows = parseCSVString(csvContent);
 
-  // Create import session
+  // Create import session — store parsed rows in summary for later execution
   const importSession = await prisma.importSession.create({
     data: {
       groupId,
@@ -77,6 +78,7 @@ async function handleParse(formData: FormData, userId: string) {
       filename: file.name,
       totalRows: parsedRows.length,
       status: "PROCESSING",
+      summary: { parsedRows: JSON.parse(JSON.stringify(parsedRows)) },
     },
   });
 
@@ -101,11 +103,12 @@ async function handleParse(formData: FormData, userId: string) {
     });
   }
 
-  // Update session status
+  // Update session status (keep parsed rows in summary)
   await prisma.importSession.update({
     where: { id: importSession.id },
     data: {
       status: detectionResult.anomalies.length > 0 ? "REVIEW" : "IMPORTING",
+      summary: { parsedRows: JSON.parse(JSON.stringify(parsedRows)) },
     },
   });
 
@@ -243,73 +246,86 @@ async function handleExecute(formData: FormData, userId: string) {
     nameToUserId.set(m.user.name.toLowerCase(), m.userId);
   });
 
-  // Get rejected row numbers
+  // Build anomaly lookup: rowNumber → list of anomalies for that row
+  const anomaliesByRow = new Map<number, typeof importSession.anomalies>();
+  for (const anomaly of importSession.anomalies) {
+    const existing = anomaliesByRow.get(anomaly.rowNumber) || [];
+    existing.push(anomaly);
+    anomaliesByRow.set(anomaly.rowNumber, existing);
+  }
+
+  // Get rejected row numbers (any anomaly on the row was REJECTED → skip entire row)
   const rejectedRows = new Set(
     importSession.anomalies
       .filter((a) => a.resolution === "REJECTED")
       .map((a) => a.rowNumber)
   );
 
-  // Re-parse the CSV to get the clean rows
-  // In production, we'd store the parsed data in the session
-  // For now, we'll read from the anomaly rawData + original file
+  // Retrieve the parsed rows that were stored in summary during the parse phase
+  const summary = importSession.summary as Record<string, unknown> | null;
+  const parsedRows: ParsedCSVRow[] = (summary?.parsedRows as ParsedCSVRow[]) || [];
+
   let importedCount = 0;
   let skippedCount = 0;
 
-  // Get all unique rows from anomalies to build the dataset
-  const allAnomalyRows = new Map<number, Record<string, unknown>>();
-  importSession.anomalies.forEach((a) => {
-    allAnomalyRows.set(a.rowNumber, a.rawData as Record<string, unknown>);
-  });
+  // Process ALL parsed rows — both clean rows and anomaly rows
+  for (const row of parsedRows) {
+    // Skip rejected rows
+    if (rejectedRows.has(row.rowNumber)) {
+      skippedCount++;
+      continue;
+    }
 
-  // Process each row that isn't rejected
-  // We import rows that either have no anomalies or have approved/modified anomalies
-  const processedRows = new Set<number>();
+    const rowAnomalies = anomaliesByRow.get(row.rowNumber) || [];
 
-  for (const anomaly of importSession.anomalies) {
-    if (processedRows.has(anomaly.rowNumber)) continue;
-    processedRows.add(anomaly.rowNumber);
-
-    if (rejectedRows.has(anomaly.rowNumber)) {
+    // Check if any ERROR anomaly on this row was not approved/modified
+    const hasUnresolvedError = rowAnomalies.some(
+      (a) =>
+        a.severity === "ERROR" &&
+        a.resolution !== "APPROVED" &&
+        a.resolution !== "MODIFIED" &&
+        a.resolution !== "AUTO_RESOLVED"
+    );
+    if (hasUnresolvedError) {
       skippedCount++;
       continue;
     }
 
     // Check if this row is a settlement-as-expense that was approved for conversion
-    if (anomaly.type === "SETTLEMENT_AS_EXPENSE" && anomaly.resolution === "APPROVED") {
-      const rawData = anomaly.rawData as Record<string, string>;
-      const payerName = rawData.paid_by || rawData.paidBy;
-      const splitBetween = rawData.split_between || rawData.splitBetween;
-      const payerId = nameToUserId.get(payerName?.toLowerCase());
-      const receiverName = splitBetween?.split(",")[0]?.trim();
-      const receiverId = nameToUserId.get(receiverName?.toLowerCase());
+    const settlementAnomaly = rowAnomalies.find(
+      (a) => a.type === "SETTLEMENT_AS_EXPENSE" && a.resolution === "APPROVED"
+    );
+    if (settlementAnomaly) {
+      const payerName = row.paidBy;
+      const payerId = nameToUserId.get(payerName?.toLowerCase() || "");
+      const receiverName = row.splitBetween?.[0]?.trim();
+      const receiverId = nameToUserId.get(receiverName?.toLowerCase() || "");
 
-      if (payerId && receiverId) {
+      if (payerId && receiverId && row.amount !== undefined) {
         await prisma.settlement.create({
           data: {
             groupId: importSession.groupId,
             payerId,
             receiverId,
-            amount: parseFloat(rawData.amount) || 0,
-            currency: (rawData.currency as Currency) || "INR",
-            notes: `Imported from CSV: ${rawData.description}`,
+            amount: Math.abs(row.amount),
+            currency: (row.currency?.toUpperCase() === "USD" ? "USD" : "INR") as Currency,
+            notes: `Imported from CSV: ${row.description}`,
           },
         });
         importedCount++;
+      } else {
+        skippedCount++;
       }
       continue;
     }
 
-    // For approved/modified rows, create expense
-    if (anomaly.resolution === "APPROVED" || anomaly.resolution === "MODIFIED") {
-      const rawData = anomaly.rawData as Record<string, string>;
-      const created = await createExpenseFromRow(rawData, importSession.groupId, userId, nameToUserId);
-      if (created) importedCount++;
-      else skippedCount++;
-    }
+    // Import as a regular expense
+    const created = await createExpenseFromRow(row, importSession.groupId, userId, nameToUserId);
+    if (created) importedCount++;
+    else skippedCount++;
   }
 
-  // Update import session
+  // Update import session with final results
   await prisma.importSession.update({
     where: { id: sessionId },
     data: {
@@ -338,30 +354,30 @@ async function handleExecute(formData: FormData, userId: string) {
 }
 
 // =============================================================================
-// Helper: Create expense from raw CSV row
+// Helper: Create expense from a parsed CSV row with full split type support
 // =============================================================================
 async function createExpenseFromRow(
-  rawData: Record<string, string>,
+  row: ParsedCSVRow,
   groupId: string,
   userId: string,
   nameToUserId: Map<string, string>
 ): Promise<boolean> {
   try {
-    const payerName = rawData.paid_by || rawData.paidBy || rawData.Paid_By;
-    const payerId = nameToUserId.get(payerName?.toLowerCase());
+    // Resolve payer — try parsed field, then raw fallbacks
+    const payerName = row.paidBy || row.raw?.paid_by || row.raw?.paidBy;
+    const payerId = nameToUserId.get(payerName?.toLowerCase()?.trim() || "");
     if (!payerId) return false;
 
-    const amount = parseFloat(rawData.amount);
-    if (isNaN(amount) || amount <= 0) return false;
+    const amount = row.amount;
+    if (amount === undefined || isNaN(amount) || amount <= 0) return false;
 
-    const currency = (rawData.currency?.toUpperCase() === "USD" ? "USD" : "INR") as Currency;
-    const splitType = (rawData.split_type?.toUpperCase() || "EQUAL") as SplitType;
+    const currency = (row.currency?.toUpperCase() === "USD" ? "USD" : "INR") as Currency;
+    const splitType = (row.splitType?.toUpperCase() || "EQUAL") as SplitType;
 
-    // Parse split members
-    const splitBetweenStr = rawData.split_between || rawData.splitBetween || "";
-    const memberNames = splitBetweenStr.split(",").map((n: string) => n.trim());
+    // Resolve split members
+    const memberNames = row.splitBetween || [];
     const memberIds = memberNames
-      .map((name: string) => nameToUserId.get(name.toLowerCase()))
+      .map((name: string) => nameToUserId.get(name.toLowerCase().trim()))
       .filter(Boolean) as string[];
 
     if (memberIds.length === 0) return false;
@@ -380,8 +396,89 @@ async function createExpenseFromRow(
       convertedAmount = amount * exchangeRate;
     }
 
-    // Calculate split amounts
-    const perPerson = Math.round((convertedAmount / memberIds.length) * 100) / 100;
+    // ── Calculate splits based on split type ──
+    const splitAmounts: { userId: string; amount: number; owedAmount: number; percentage?: number; shares?: number }[] = [];
+    const parsed = parseSplitDetails(row);
+
+    switch (splitType) {
+      case "PERCENTAGE": {
+        if (parsed.values.length === memberIds.length) {
+          // Use parsed percentage values
+          for (let i = 0; i < memberIds.length; i++) {
+            const pct = parsed.values[i];
+            const amt = Math.round(convertedAmount * (pct / 100) * 100) / 100;
+            splitAmounts.push({
+              userId: memberIds[i],
+              amount: amt,
+              owedAmount: amt,
+              percentage: pct,
+            });
+          }
+        } else {
+          // Fallback: equal split
+          const perPerson = Math.round((convertedAmount / memberIds.length) * 100) / 100;
+          for (const memberId of memberIds) {
+            splitAmounts.push({ userId: memberId, amount: perPerson, owedAmount: perPerson });
+          }
+        }
+        break;
+      }
+
+      case "SHARES": {
+        if (parsed.values.length === memberIds.length) {
+          const totalShares = parsed.values.reduce((a, b) => a + b, 0);
+          for (let i = 0; i < memberIds.length; i++) {
+            const shareCount = parsed.values[i];
+            const amt = Math.round(convertedAmount * (shareCount / totalShares) * 100) / 100;
+            splitAmounts.push({
+              userId: memberIds[i],
+              amount: amt,
+              owedAmount: amt,
+              shares: shareCount,
+            });
+          }
+        } else {
+          // Fallback: equal split
+          const perPerson = Math.round((convertedAmount / memberIds.length) * 100) / 100;
+          for (const memberId of memberIds) {
+            splitAmounts.push({ userId: memberId, amount: perPerson, owedAmount: perPerson });
+          }
+        }
+        break;
+      }
+
+      case "EXACT": {
+        if (parsed.values.length === memberIds.length) {
+          for (let i = 0; i < memberIds.length; i++) {
+            const amt = parsed.values[i];
+            splitAmounts.push({
+              userId: memberIds[i],
+              amount: amt,
+              owedAmount: amt * exchangeRate,
+            });
+          }
+        } else {
+          // Fallback: equal split
+          const perPerson = Math.round((convertedAmount / memberIds.length) * 100) / 100;
+          for (const memberId of memberIds) {
+            splitAmounts.push({ userId: memberId, amount: perPerson, owedAmount: perPerson });
+          }
+        }
+        break;
+      }
+
+      case "EQUAL":
+      default: {
+        // Divide equally, give rounding remainder to first person
+        const perPerson = Math.floor((convertedAmount / memberIds.length) * 100) / 100;
+        const remainder = Math.round((convertedAmount - perPerson * memberIds.length) * 100) / 100;
+        for (let i = 0; i < memberIds.length; i++) {
+          const amt = i === 0 ? perPerson + remainder : perPerson;
+          splitAmounts.push({ userId: memberIds[i], amount: amt, owedAmount: amt });
+        }
+        break;
+      }
+    }
 
     await prisma.$transaction(async (tx) => {
       const expense = await tx.expense.create({
@@ -393,21 +490,23 @@ async function createExpenseFromRow(
           currency,
           exchangeRate,
           convertedAmount,
-          category: rawData.category || "General",
-          description: rawData.description || "Imported expense",
-          notes: rawData.notes || `Imported from CSV`,
-          date: rawData.date ? new Date(rawData.date) : new Date(),
+          category: row.category || row.raw?.category || "General",
+          description: row.description || "Imported expense",
+          notes: row.notes || row.raw?.notes || "Imported from CSV",
+          date: row.date ? new Date(row.date) : new Date(),
           splitType,
-          transactionId: rawData.transaction_id || rawData.transactionId,
+          transactionId: row.transactionId || row.raw?.transaction_id,
         },
       });
 
       await tx.expenseSplit.createMany({
-        data: memberIds.map((memberId) => ({
+        data: splitAmounts.map((split) => ({
           expenseId: expense.id,
-          userId: memberId,
-          amount: perPerson,
-          owedAmount: perPerson,
+          userId: split.userId,
+          amount: split.amount,
+          owedAmount: split.owedAmount,
+          percentage: split.percentage,
+          shares: split.shares,
         })),
       });
     });

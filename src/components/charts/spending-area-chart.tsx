@@ -21,8 +21,9 @@ function CustomTooltip({ active, payload, label }: any) {
   return (
     <div className="glass-strong rounded-lg p-3 shadow-xl border border-border/50">
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <p className="text-sm font-bold text-primary">
+      <p className={`text-sm font-bold ${payload[0].payload.isForecast ? 'text-chart-3' : 'text-primary'}`}>
         {formatCurrency(payload[0].value)}
+        {payload[0].payload.isForecast && <span className="ml-2 text-[10px] text-chart-3/80 font-normal uppercase tracking-wider">Forecast</span>}
       </p>
     </div>
   );
@@ -34,8 +35,8 @@ export function SpendingAreaChart({ data, currency = "INR" }: SpendingAreaChartP
       <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
         <defs>
           <linearGradient id="colorSpending" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="hsl(160, 84%, 39%)" stopOpacity={0.3} />
-            <stop offset="95%" stopColor="hsl(160, 84%, 39%)" stopOpacity={0} />
+            <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+            <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
           </linearGradient>
         </defs>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
@@ -55,11 +56,11 @@ export function SpendingAreaChart({ data, currency = "INR" }: SpendingAreaChartP
         <Area
           type="monotone"
           dataKey="amount"
-          stroke="hsl(160, 84%, 39%)"
+          stroke="hsl(var(--primary))"
           strokeWidth={2.5}
           fill="url(#colorSpending)"
           dot={false}
-          activeDot={{ r: 5, fill: "hsl(160, 84%, 39%)", stroke: "hsl(var(--background))", strokeWidth: 2 }}
+          activeDot={{ r: 5, fill: "hsl(var(--primary))", stroke: "hsl(var(--background))", strokeWidth: 2 }}
         />
       </AreaChart>
     </ResponsiveContainer>

@@ -1,64 +1,65 @@
 @import "tailwindcss";
 
 /* ============================================================================
-   SplitSmart — Corporate Premium Design System
+   SplitSmart — Obsidian & Gold Premium Design System
    ============================================================================ */
 
-/* ---------- Light Theme ---------- */
+/* ---------- Light Theme (Fallback, but we prefer dark for premium) ---------- */
 :root {
-  --background: 210 20% 98%; /* Soft grey backdrop like Splitwise.com */
-  --foreground: 240 10% 3.9%;
+  --background: 43 10% 98%;
+  --foreground: 43 10% 10%;
   --card: 0 0% 100%;
-  --card-foreground: 240 10% 3.9%;
+  --card-foreground: 43 10% 10%;
   --popover: 0 0% 100%;
-  --popover-foreground: 240 10% 3.9%;
-  --primary: 168 76% 44%; /* Splitwise Teal */
+  --popover-foreground: 43 10% 10%;
+  --primary: 43 74% 49%; /* Champagne Gold */
   --primary-foreground: 0 0% 100%;
-  --secondary: 240 4.8% 95.9%;
-  --secondary-foreground: 240 10% 3.9%;
-  --muted: 240 4.8% 95.9%;
-  --muted-foreground: 240 3.8% 46.1%;
-  --accent: 240 4.8% 95.9%;
-  --accent-foreground: 240 10% 3.9%;
-  --destructive: 15 100% 59%; /* Splitwise Orange/Coral (You Owe) */
+  --secondary: 210 16% 82%; /* Platinum */
+  --secondary-foreground: 43 10% 10%;
+  --muted: 43 10% 96%;
+  --muted-foreground: 43 5% 45%;
+  --accent: 43 10% 96%;
+  --accent-foreground: 43 10% 10%;
+  --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 98%;
-  --border: 210 14% 90%; /* Soft border */
-  --input: 210 14% 90%;
-  --ring: 168 76% 44%;
-  --radius: 0.5rem;
-  --chart-1: 168 76% 44%;
-  --chart-2: 15 100% 59%;
-  --chart-3: 163 49% 56%;
-  --chart-4: 262 83% 58%;
-  --chart-5: 346 77% 50%;
+  --border: 43 10% 90%;
+  --input: 43 10% 90%;
+  --ring: 43 74% 49%;
+  --radius: 0.75rem;
+  --chart-1: 43 74% 49%; /* Gold */
+  --chart-2: 210 16% 60%; /* Platinum */
+  --chart-3: 0 0% 30%; /* Dark Gray */
+  --chart-4: 43 30% 70%; /* Muted Gold */
+  --chart-5: 210 10% 40%; /* Slate */
 }
 
-/* ---------- Dark Theme ---------- */
+/* ---------- Dark Theme (Obsidian) ---------- */
 .dark {
-  --background: 210 20% 8%; /* Splitwise Dark Backdrop */
-  --foreground: 0 0% 98%;
-  --card: 210 16% 12%; /* Dark panel card */
-  --card-foreground: 0 0% 98%;
-  --popover: 210 20% 8%;
-  --popover-foreground: 0 0% 98%;
-  --primary: 168 76% 44%; /* Keep Splitwise Teal bright */
-  --primary-foreground: 0 0% 100%;
-  --secondary: 210 12% 16%;
-  --secondary-foreground: 0 0% 98%;
-  --muted: 210 12% 16%;
-  --muted-foreground: 210 10% 60%;
-  --accent: 210 12% 16%;
-  --accent-foreground: 0 0% 98%;
-  --destructive: 15 100% 59%;
-  --destructive-foreground: 0 0% 98%;
-  --border: 210 12% 20%; /* Dark border */
-  --input: 210 12% 20%;
-  --ring: 168 76% 44%;
-  --chart-1: 168 76% 44%;
-  --chart-2: 15 100% 59%;
-  --chart-3: 163 49% 56%;
-  --chart-4: 262 83% 58%;
-  --chart-5: 346 77% 50%;
+  --background: 0 0% 2%; /* True Obsidian / Vantablack */
+  --foreground: 43 20% 94%; /* Off-white with a hint of warmth */
+  --card: 0 0% 4%; /* Slightly lighter obsidian for cards */
+  --card-foreground: 43 20% 94%;
+  --popover: 0 0% 4%;
+  --popover-foreground: 43 20% 94%;
+  --primary: 43 74% 49%; /* Metallic Champagne Gold */
+  --primary-foreground: 0 0% 10%;
+  --secondary: 210 16% 82%; /* Platinum / Silver */
+  --secondary-foreground: 0 0% 10%;
+  --muted: 0 0% 8%; /* Very dark grey for muted areas */
+  --muted-foreground: 43 10% 55%;
+  --accent: 0 0% 8%;
+  --accent-foreground: 43 20% 94%;
+  --destructive: 0 70% 50%; /* Deep Crimson for destructive */
+  --destructive-foreground: 43 20% 94%;
+  --border: 0 0% 12%; /* Very subtle borders */
+  --input: 0 0% 12%;
+  --ring: 43 74% 49%;
+  
+  --chart-1: 43 74% 49%; /* Gold */
+  --chart-2: 210 16% 82%; /* Platinum */
+  --chart-3: 43 40% 30%; /* Deep Bronze */
+  --chart-4: 0 0% 40%; /* Slate */
+  --chart-5: 43 80% 70%; /* Bright Gold */
 }
 
 /* ---------- Theme Inline Mapping (Tailwind v4) ---------- */
@@ -87,14 +88,16 @@
   --color-chart-3: hsl(var(--chart-3));
   --color-chart-4: hsl(var(--chart-4));
   --color-chart-5: hsl(var(--chart-5));
-  --color-splitwise-teal: hsl(168 76% 44%);
-  --color-splitwise-orange: hsl(15 100% 59%);
-  --color-splitwise-green: hsl(163 49% 56%);
-  --radius-sm: calc(var(--radius) - 2px);
-  --radius-md: var(--radius);
-  --radius-lg: calc(var(--radius) + 2px);
-  --radius-xl: calc(var(--radius) + 6px);
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-splitwise-teal: hsl(var(--primary)); /* Re-mapped to Gold */
+  --color-splitwise-orange: hsl(0 70% 50%); /* Crimson for Owe */
+  --color-splitwise-green: hsl(43 74% 49%); /* Gold for Owed */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 16px);
+  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
 }
 
 /* ---------- Base ---------- */
@@ -112,8 +115,8 @@ body {
 
 /* ---------- Scrollbars ---------- */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 4px;
+  height: 4px;
 }
 
 ::-webkit-scrollbar-track {
@@ -126,22 +129,45 @@ body {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.35);
+  background: hsl(var(--primary) / 0.4); /* Gold hover */
 }
 
-/* ---------- Corporate Card Aesthetics ---------- */
+/* ---------- Ultra-Premium Neo-Glassmorphism Card ---------- */
 .premium-card {
   position: relative;
-  background-color: hsl(var(--card));
-  border: 1px solid hsl(var(--border) / 0.85);
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  border-radius: var(--radius-lg);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  background: hsl(var(--card) / 0.3);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid hsl(var(--foreground) / 0.05); /* Extremely subtle border */
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 hsl(var(--foreground) / 0.05);
+  border-radius: var(--radius-xl);
+  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+  overflow: hidden;
 }
 
 .premium-card:hover {
-  border-color: hsl(var(--primary) / 0.35);
-  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.1), 0 2px 6px -1px rgba(0, 0, 0, 0.06);
+  border-color: hsl(var(--primary) / 0.2);
+  box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.7), inset 0 1px 0 0 hsl(var(--primary) / 0.1);
+  transform: translateY(-2px);
+}
+
+/* Animated Mesh Gradient Background (Obsidian & Gold) */
+.bg-mesh {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-color: hsl(var(--background));
+  background-image: 
+    radial-gradient(circle at 15% 50%, hsl(var(--primary) / 0.03) 0px, transparent 40%),
+    radial-gradient(circle at 85% 30%, hsl(var(--secondary) / 0.02) 0px, transparent 40%),
+    radial-gradient(circle at 50% 80%, hsl(var(--primary) / 0.02) 0px, transparent 50%);
+  background-size: 100% 100%;
+  animation: mesh-flow 20s ease-in-out infinite alternate;
+}
+
+@keyframes mesh-flow {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.1); }
 }
 
 .premium-glow-bg {
@@ -149,64 +175,87 @@ body {
   width: 600px;
   height: 600px;
   border-radius: 50%;
-  background: radial-gradient(circle, hsl(var(--primary) / 0.015) 0%, transparent 75%);
-  filter: blur(120px);
+  background: radial-gradient(circle, hsl(var(--primary) / 0.05) 0%, transparent 60%);
+  filter: blur(100px);
   pointer-events: none;
   z-index: 0;
+  animation: pulse-slow 10s infinite alternate ease-in-out;
+}
+
+@keyframes pulse-slow {
+  0% { transform: scale(0.9) translate(0, 0); opacity: 0.6; }
+  100% { transform: scale(1.1) translate(10px, -10px); opacity: 1; }
+}
+
+/* ---------- Glass Elements ---------- */
+.glass {
+  background: hsl(var(--background) / 0.4);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid hsl(var(--foreground) / 0.05);
+}
+
+.glass-nav {
+  background: hsl(var(--card) / 0.4);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid hsl(var(--foreground) / 0.05);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
 }
 
 /* ---------- Typography ---------- */
 .heading-premium {
   font-family: var(--font-sans);
-  letter-spacing: -0.025em;
-  font-weight: 600;
+  letter-spacing: 0.05em; /* Wider tracking for premium feel */
+  font-weight: 300; /* Lighter font weight */
+  text-transform: uppercase;
   color: hsl(var(--foreground));
 }
 
-/* ---------- Glassmorphism Overlay (used sparingly) ---------- */
-.glass-header {
-  background: hsl(var(--background) / 0.8);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid hsl(var(--border));
+/* ---------- Micro-Animations ---------- */
+.hover-lift {
+  transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
-/* ---------- Tables ---------- */
-.premium-table-container {
-  border-radius: var(--radius-md);
-  border: 1px solid hsl(var(--border) / 0.8);
-  overflow: hidden;
-  background: hsl(var(--card));
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 35px -10px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
 }
 
-.premium-table-header {
-  background: hsl(var(--muted) / 0.5) !important;
-}
-
-.premium-table-row {
-  border-bottom: 1px solid hsl(var(--border) / 0.5);
-  transition: background-color 0.15s ease;
-}
-
-.premium-table-row:hover {
-  background-color: hsl(var(--muted) / 0.3) !important;
-}
-
-/* ---------- Animations ---------- */
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(6px); }
+@keyframes slideUpFade {
+  from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-.animate-fade-in {
-  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+.animate-slide-up {
+  animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-.animate-slide-up {
-  animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+/* Staggered children */
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+.stagger-5 { animation-delay: 0.5s; }
+
+/* Elegant Metallic Gradient Text */
+.gradient-text {
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  background-image: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary)));
+}
+
+/* ---------- Tailwind Components ---------- */
+@layer components {
+  .btn-premium {
+    @apply relative overflow-hidden transition-all duration-500 font-medium tracking-wide;
+  }
+  .btn-premium::after {
+    content: '';
+    @apply absolute inset-0 bg-white/10 opacity-0 transition-opacity duration-500;
+  }
+  .btn-premium:hover::after {
+    @apply opacity-100;
+  }
 }

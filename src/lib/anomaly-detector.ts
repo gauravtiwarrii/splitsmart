@@ -89,6 +89,10 @@ export async function detectAnomalies(
   allAnomalies.push(...detectExpenseAfterMemberLeft(rows, memberInfo));
   allAnomalies.push(...detectExpenseBeforeMemberJoined(rows, memberInfo));
   allAnomalies.push(...detectInvalidMemberNames(rows, memberNames));
+  allAnomalies.push(...detectZeroAmount(rows));
+  allAnomalies.push(...detectMissingCurrency(rows));
+  allAnomalies.push(...detectAmbiguousDate(rows));
+  allAnomalies.push(...detectConflictingSplitInfo(rows));
 
   // ── Identify rows with errors ──
   const errorRowNumbers = new Set(
@@ -132,10 +136,10 @@ function detectDuplicateExpenses(rows: ParsedCSVRow[]): DetectedAnomaly[] {
   for (const row of rows) {
     // Build a fingerprint from the fields that, together, identify a unique expense
     const fingerprint = [
-      row.description?.toLowerCase().trim() ?? "",
+      row.description?.toLowerCase().replace(/[^a-z0-9]/g, "").trim() ?? "",
       row.amount?.toString() ?? "",
       row.date ?? "",
-      row.paidBy?.toLowerCase().trim() ?? "",
+      row.paidBy?.toLowerCase().replace(/[^a-z0-9]/g, "").trim() ?? "",
     ].join("|");
 
     // Skip rows where we can't compute a meaningful fingerprint
@@ -217,6 +221,7 @@ function detectSettlementsAsExpenses(rows: ParsedCSVRow[]): DetectedAnomaly[] {
     /\breimburs/i,
     /\bpayback\b/i,
     /\bpay\s*back\b/i,
+    /\bdeposit\s*share\b/i,
   ];
 
   for (const row of rows) {
@@ -278,15 +283,122 @@ function detectMissingPayer(rows: ParsedCSVRow[]): DetectedAnomaly[] {
 }
 
 /**
+ * **Detector: Zero Amount**
+ */
+function detectZeroAmount(rows: ParsedCSVRow[]): DetectedAnomaly[] {
+  const anomalies: DetectedAnomaly[] = [];
+  for (const row of rows) {
+    if (row.amount === 0) {
+      anomalies.push(
+        createAnomaly({
+          rowNumber: row.rowNumber,
+          type: "ZERO_AMOUNT",
+          severity: "ERROR",
+          description: "Expense amount is zero",
+          suggestedAction: "Specify a valid amount or remove this row",
+          rawData: row.raw,
+          field: "amount",
+          currentValue: "0",
+        })
+      );
+    }
+  }
+  return anomalies;
+}
+
+/**
+ * **Detector: Missing Currency**
+ */
+function detectMissingCurrency(rows: ParsedCSVRow[]): DetectedAnomaly[] {
+  const anomalies: DetectedAnomaly[] = [];
+  for (const row of rows) {
+    if (!row.currency || row.currency.trim() === "") {
+      anomalies.push(
+        createAnomaly({
+          rowNumber: row.rowNumber,
+          type: "MISSING_CURRENCY",
+          severity: "WARNING",
+          description: "No currency specified",
+          suggestedAction: "Default to group currency (INR)",
+          rawData: row.raw,
+          field: "currency",
+          currentValue: "(empty)",
+          suggestedValue: "INR",
+        })
+      );
+    }
+  }
+  return anomalies;
+}
+
+/**
+ * **Detector: Ambiguous Date**
+ */
+function detectAmbiguousDate(rows: ParsedCSVRow[]): DetectedAnomaly[] {
+  const anomalies: DetectedAnomaly[] = [];
+  for (const row of rows) {
+    const rawDate = row.raw.date;
+    if (rawDate && /^\d{2}\/\d{2}\/\d{4}$/.test(rawDate.trim())) {
+      const [p1, p2] = rawDate.trim().split('/');
+      if (parseInt(p1) <= 12 && parseInt(p2) <= 12 && p1 !== p2) {
+        anomalies.push(
+          createAnomaly({
+            rowNumber: row.rowNumber,
+            type: "AMBIGUOUS_DATE",
+            severity: "WARNING",
+            description: `Ambiguous date format: ${rawDate} (could be DD/MM or MM/DD)`,
+            suggestedAction: `Ensure this is interpreted correctly as ${row.date}`,
+            rawData: row.raw,
+            field: "date",
+            currentValue: rawDate,
+            suggestedValue: row.date,
+          })
+        );
+      }
+    }
+  }
+  return anomalies;
+}
+
+/**
+ * **Detector: Conflicting Split Info**
+ */
+function detectConflictingSplitInfo(rows: ParsedCSVRow[]): DetectedAnomaly[] {
+  const anomalies: DetectedAnomaly[] = [];
+  for (const row of rows) {
+    const isExplicitlyEqual = row.raw.split_type?.toLowerCase().trim() === 'equal';
+    const hasSplitDetails = !!row.splitDetails;
+    if (isExplicitlyEqual && hasSplitDetails) {
+      anomalies.push(
+        createAnomaly({
+          rowNumber: row.rowNumber,
+          type: "CONFLICTING_SPLIT_INFO",
+          severity: "WARNING",
+          description: "Row specified as 'equal' split, but contains specific split shares/details",
+          suggestedAction: "Change to unequal/shares to apply the specific details",
+          rawData: row.raw,
+          field: "splitType",
+          currentValue: "EQUAL",
+          suggestedValue: "SHARES",
+        })
+      );
+    }
+  }
+  return anomalies;
+}
+
+/**
  * **Detector 5: Invalid Splits**
  *
  * Validates split configurations:
  *   - PERCENTAGE splits: percentages must sum to 100 (±1% tolerance for
  *     floating-point rounding).
  *   - EXACT splits: individual amounts must sum to the total expense amount.
+ *   - SHARES splits: validates that share values are parseable positive integers.
  *
- * This detector examines the `splitType` and `splitBetween` fields along
- * with the row's raw data for percentage/amount values.
+ * Parses split detail strings from the `splitDetails` field or the `notes`
+ * field using pattern matching (e.g., "Percentages: 30/25/25/20" or
+ * "Rohan 700; Priya 400; Meera 400").
  *
  * Severity: WARNING — the data may still be importable with corrections.
  */
@@ -297,12 +409,11 @@ function detectInvalidSplits(rows: ParsedCSVRow[]): DetectedAnomaly[] {
     if (!row.splitType) continue;
 
     const splitType = row.splitType.toUpperCase();
+    const parsed = parseSplitDetails(row);
 
     if (splitType === "PERCENTAGE") {
-      // Try to extract percentages from the raw data
-      const percentages = extractNumericValues(row.raw, "percentage");
-      if (percentages.length > 0) {
-        const sum = percentages.reduce((a, b) => a + b, 0);
+      if (parsed.values.length > 0) {
+        const sum = parsed.values.reduce((a, b) => a + b, 0);
         if (Math.abs(sum - 100) > 1) {
           anomalies.push(
             createAnomaly({
@@ -322,10 +433,8 @@ function detectInvalidSplits(rows: ParsedCSVRow[]): DetectedAnomaly[] {
     }
 
     if (splitType === "EXACT" && row.amount !== undefined) {
-      // Try to extract exact amounts from the raw data
-      const amounts = extractNumericValues(row.raw, "amount");
-      if (amounts.length > 0) {
-        const sum = amounts.reduce((a, b) => a + b, 0);
+      if (parsed.values.length > 0) {
+        const sum = parsed.values.reduce((a, b) => a + b, 0);
         if (Math.abs(sum - row.amount) > 0.01) {
           anomalies.push(
             createAnomaly({
@@ -343,9 +452,92 @@ function detectInvalidSplits(rows: ParsedCSVRow[]): DetectedAnomaly[] {
         }
       }
     }
+
+    // Validate member count matches split value count
+    if (parsed.values.length > 0 && row.splitBetween && row.splitBetween.length > 0) {
+      if (parsed.values.length !== row.splitBetween.length) {
+        anomalies.push(
+          createAnomaly({
+            rowNumber: row.rowNumber,
+            type: "INVALID_SPLIT",
+            severity: "WARNING",
+            description: `Split has ${parsed.values.length} values but ${row.splitBetween.length} participants`,
+            suggestedAction: "Ensure the number of split values matches the number of participants",
+            rawData: row.raw,
+            field: "splitType",
+            currentValue: `${parsed.values.length} values`,
+            suggestedValue: `${row.splitBetween.length} values`,
+          })
+        );
+      }
+    }
   }
 
   return anomalies;
+}
+
+/**
+ * Parses split detail values from a CSV row. Checks `splitDetails` first,
+ * then falls back to `notes` for inline split configurations.
+ *
+ * Supports formats:
+ *   - "Name1 value1; Name2 value2" (e.g., "Rohan 700; Priya 400; Meera 400")
+ *   - "Name1 value1%; Name2 value2%" (e.g., "Aisha 30%; Rohan 30%")
+ *   - "Percentages: 30/25/25/20" or "Shares: 2/1/1/1"
+ *   - "Exact: 500/400/400/300"
+ *   - Slash-separated values from notes (e.g., notes containing "30/25/25/20")
+ *
+ * @returns An object with parsed numeric `values` and optional `names` arrays.
+ */
+export function parseSplitDetails(row: ParsedCSVRow): {
+  values: number[];
+  names: string[];
+} {
+  // Try splitDetails field first, then notes
+  const source = row.splitDetails || "";
+  const notes = row.notes || "";
+
+  // Strategy 1: "Name value; Name value" format from splitDetails
+  // e.g., "Rohan 700; Priya 400; Meera 400" or "Aisha 30%; Rohan 30%"
+  if (source) {
+    const nameValuePattern = /([A-Za-z][A-Za-z'\s]*?)\s+([\d.]+)%?/g;
+    const matches = [...source.matchAll(nameValuePattern)];
+    if (matches.length >= 2) {
+      return {
+        names: matches.map(m => m[1].trim()),
+        values: matches.map(m => parseFloat(m[2])),
+      };
+    }
+  }
+
+  // Strategy 2: "Prefix: val/val/val" format from notes
+  // e.g., "Percentages: 30/25/25/20" or "Shares: 2/1/1/1" or "Exact: 500/400/400/300"
+  const prefixSlashPattern = /(?:percentages?|shares?|exact|split)[:\s]+(\d+(?:\.\d+)?(?:\s*\/\s*\d+(?:\.\d+)?)+)/i;
+  const prefixMatch = notes.match(prefixSlashPattern) || source.match(prefixSlashPattern);
+  if (prefixMatch) {
+    const values = prefixMatch[1].split("/").map(v => parseFloat(v.trim()));
+    if (values.every(v => !isNaN(v))) {
+      return { names: [], values };
+    }
+  }
+
+  // Strategy 3: Bare slash-separated numbers in notes (e.g., "30/25/25/20")
+  const bareSlashPattern = /(\d+(?:\.\d+)?(?:\s*\/\s*\d+(?:\.\d+)?){2,})/;
+  const bareMatch = notes.match(bareSlashPattern);
+  if (bareMatch) {
+    const values = bareMatch[1].split("/").map(v => parseFloat(v.trim()));
+    if (values.every(v => !isNaN(v))) {
+      return { names: [], values };
+    }
+  }
+
+  // Strategy 4: Try extracting from raw data keys containing 'percentage' or 'amount'
+  const rawValues = extractNumericValues(row.raw, "percentage");
+  if (rawValues.length > 0) {
+    return { names: [], values: rawValues };
+  }
+
+  return { names: [], values: [] };
 }
 
 /**

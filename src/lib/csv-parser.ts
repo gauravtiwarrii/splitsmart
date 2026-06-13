@@ -112,6 +112,13 @@ const COLUMN_NAME_MAP: Record<string, string> = {
   tag: "category",
   label: "category",
 
+  // Split details variations
+  split_details: "splitDetails",
+  splitdetails: "splitDetails",
+  "split details": "splitDetails",
+  split_amounts: "splitDetails",
+  "split amounts": "splitDetails",
+
   // Notes variations
   notes: "notes",
   comments: "notes",
@@ -287,6 +294,28 @@ function normalizeRow(
     }
   }
 
+  // Parse date
+  let normalizedDate = mapped.date || undefined;
+  if (normalizedDate) {
+    normalizedDate = normalizedDate.trim();
+    // Check if DD/MM/YYYY
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(normalizedDate)) {
+      const [dd, mm, yyyy] = normalizedDate.split('/');
+      normalizedDate = `${yyyy}-${mm}-${dd}`;
+    }
+    // Check if "Mar 14" format (assume year 2026 based on context)
+    else if (/^[A-Za-z]{3}\s\d{1,2}$/.test(normalizedDate)) {
+      const [mon, day] = normalizedDate.split(' ');
+      const monthMap: Record<string, string> = {
+        jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06",
+        jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12"
+      };
+      const mm = monthMap[mon.toLowerCase()] || "01";
+      const dd = day.padStart(2, '0');
+      normalizedDate = `2026-${mm}-${dd}`;
+    }
+  }
+
   // Parse the amount field — handle commas, currency symbols, whitespace
   let amount: number | undefined;
   if (mapped.amount) {
@@ -308,16 +337,21 @@ function normalizeRow(
       .filter((s) => s.length > 0);
   }
 
+  let splitType = mapped.splitType?.toUpperCase() || undefined;
+  if (splitType === "UNEQUAL") splitType = "EXACT";
+  if (splitType === "SHARE") splitType = "SHARES";
+
   return {
     rowNumber,
     transactionId: mapped.transactionId || undefined,
-    date: mapped.date || undefined,
+    date: normalizedDate,
     description: mapped.description || undefined,
     amount,
     currency: mapped.currency?.toUpperCase() || undefined,
-    paidBy: mapped.paidBy || undefined,
+    paidBy: mapped.paidBy?.trim() || undefined,
     splitBetween,
-    splitType: mapped.splitType?.toUpperCase() || undefined,
+    splitType,
+    splitDetails: mapped.splitDetails || undefined,
     category: mapped.category || undefined,
     notes: mapped.notes || undefined,
     raw: rawRow,

@@ -23,7 +23,9 @@ import {
   Plane,
   Plus,
   CheckCircle,
+  Sparkles,
 } from "lucide-react";
+import { predictNextMonth } from "@/lib/ml-engine";
 
 /* ============================================================================
    Fallback Mock Data
@@ -228,10 +230,19 @@ export default function DashboardPage() {
 
   // Compute charts and lists data
   const monthlySpending = React.useMemo(() => {
+    let baseData = fallbackMonthlySpending;
     if (data?.monthlySpending && data.monthlySpending.length > 0) {
-      return data.monthlySpending;
+      baseData = data.monthlySpending;
     }
-    return fallbackMonthlySpending;
+
+    // ML Predictive Linear Regression
+    const trainingData = baseData.map((d: any, i: number) => ({ monthIndex: i, amount: d.amount }));
+    const predictedAmount = predictNextMonth(trainingData);
+
+    return [
+      ...baseData,
+      { month: "Next (Forecast)", amount: predictedAmount, isForecast: true }
+    ];
   }, [data]);
 
   const categorySpending = React.useMemo(() => {
@@ -284,46 +295,47 @@ export default function DashboardPage() {
           <p className="text-xs text-muted-foreground">Welcome back, {session?.user?.name || "User"}</p>
         </div>
         <div className="flex gap-2">
-          <Link href="/expenses/new">
-            <Button className="bg-splitwise-teal hover:bg-splitwise-teal/90 text-white font-semibold flex items-center gap-1.5 shadow-sm text-xs px-3.5 py-1.5 rounded-lg h-9">
+          <Link href="/expenses">
+            <Button className="btn-premium bg-gradient-to-r from-primary to-chart-4 text-primary-foreground font-medium flex items-center gap-1.5 shadow-lg text-xs px-4 py-2 rounded-xl h-10 border border-primary/30">
               <Plus className="h-4 w-4" />
-              Add an expense
+              Add Expense
             </Button>
           </Link>
           <Link href="/settlements">
-            <Button className="bg-splitwise-orange hover:bg-splitwise-orange/90 text-white font-semibold flex items-center gap-1.5 shadow-sm text-xs px-3.5 py-1.5 rounded-lg h-9">
+            <Button variant="outline" className="font-medium flex items-center gap-1.5 shadow-sm text-xs px-4 py-2 rounded-xl h-10 border-border/50 hover:bg-card/50">
               <CheckCircle className="h-4 w-4" />
-              Settle up
+              Settle Up
             </Button>
           </Link>
         </div>
       </div>
 
       {/* ---------- Splitwise Balance Summary Widget ---------- */}
-      <div className="grid grid-cols-3 border border-border/80 rounded-xl bg-card p-3 md:p-4 text-center divide-x divide-border shadow-sm">
-        <div className="flex flex-col justify-center py-1">
-          <span className="text-[9px] md:text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Total Balance</span>
+      <div className="grid grid-cols-3 premium-card rounded-2xl p-4 md:p-6 text-center divide-x divide-border shadow-2xl relative overflow-hidden group">
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+        <div className="flex flex-col justify-center py-2 relative z-10 hover-lift">
+          <span className="text-[9px] md:text-[10px] uppercase font-medium text-muted-foreground tracking-widest">Total Balance</span>
           <span className={cn(
-            "text-sm md:text-base font-bold mt-0.5",
+            "text-sm md:text-base font-light tracking-wide mt-1",
             totalBalance > 0.01 ? "text-splitwise-green" : (totalBalance < -0.01 ? "text-splitwise-orange" : "text-muted-foreground/60")
           )}>
             {totalBalance > 0.01 ? "+" : ""}{formatCurrency(totalBalance)}
           </span>
         </div>
-        <div className="flex flex-col justify-center py-1">
-          <span className="text-[9px] md:text-[10px] uppercase font-bold text-muted-foreground tracking-wider">You Owe</span>
+        <div className="flex flex-col justify-center py-2 relative z-10 hover-lift">
+          <span className="text-[10px] md:text-[11px] uppercase font-medium text-muted-foreground tracking-widest">You Owe</span>
           <span className={cn(
-            "text-sm md:text-base font-bold mt-0.5",
-            youOwe > 0.01 ? "text-splitwise-orange" : "text-muted-foreground/60"
+            "text-xl md:text-3xl font-light tracking-wide mt-1.5",
+            youOwe > 0.01 ? "text-splitwise-orange drop-shadow-md" : "text-muted-foreground/60"
           )}>
             {formatCurrency(youOwe)}
           </span>
         </div>
-        <div className="flex flex-col justify-center py-1">
-          <span className="text-[9px] md:text-[10px] uppercase font-bold text-muted-foreground tracking-wider">You Are Owed</span>
+        <div className="flex flex-col justify-center py-2 relative z-10 hover-lift">
+          <span className="text-[10px] md:text-[11px] uppercase font-medium text-muted-foreground tracking-widest">You Are Owed</span>
           <span className={cn(
-            "text-sm md:text-base font-bold mt-0.5",
-            youAreOwed > 0.01 ? "text-splitwise-green" : "text-muted-foreground/60"
+            "text-xl md:text-3xl font-light tracking-wide mt-1.5",
+            youAreOwed > 0.01 ? "text-splitwise-green drop-shadow-md" : "text-muted-foreground/60"
           )}>
             {formatCurrency(youAreOwed)}
           </span>
@@ -333,14 +345,14 @@ export default function DashboardPage() {
       {/* ---------- Splitwise Owe / Owed Columns ---------- */}
       <div className="grid gap-6 md:grid-cols-2">
         {/* YOU OWE */}
-        <Card className="premium-card shadow-sm border-border/80">
-          <CardHeader className="py-3.5 border-b border-border bg-muted/20">
-            <CardTitle className="text-xs font-bold uppercase tracking-wider text-splitwise-orange flex items-center gap-1.5">
+        <Card className="premium-card shadow-lg border-border/40 hover:border-splitwise-orange/30 transition-colors">
+          <CardHeader className="py-4 border-b border-border/50 bg-card/20 backdrop-blur-md">
+            <CardTitle className="text-xs font-bold uppercase tracking-wider text-splitwise-orange flex items-center gap-2">
               <TrendingDown className="h-4 w-4" />
               You Owe
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-4">
+          <CardContent className="p-4 bg-card/30">
             {balancesLoading ? (
               <div className="space-y-3">
                 <Skeleton className="h-10 w-full rounded-lg bg-muted/40" />
@@ -379,14 +391,14 @@ export default function DashboardPage() {
         </Card>
 
         {/* YOU ARE OWED */}
-        <Card className="premium-card shadow-sm border-border/80">
-          <CardHeader className="py-3.5 border-b border-border bg-muted/20">
-            <CardTitle className="text-xs font-bold uppercase tracking-wider text-splitwise-green flex items-center gap-1.5">
+        <Card className="premium-card shadow-lg border-border/40 hover:border-splitwise-green/30 transition-colors">
+          <CardHeader className="py-4 border-b border-border/50 bg-card/20 backdrop-blur-md">
+            <CardTitle className="text-xs font-bold uppercase tracking-wider text-splitwise-green flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
               You Are Owed
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-4">
+          <CardContent className="p-4 bg-card/30">
             {balancesLoading ? (
               <div className="space-y-3">
                 <Skeleton className="h-10 w-full rounded-lg bg-muted/40" />
@@ -506,12 +518,12 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1">
-                {recentActivity.map((item: any) => (
+                {recentActivity.map((item: any, i: number) => (
                   <div
                     key={item.id}
-                    className="flex items-start gap-3.5 group"
+                    className={`flex items-start gap-3.5 group hover-lift p-2 rounded-xl hover:bg-card/40 transition-all duration-300 animate-slide-up stagger-${(i % 5) + 1}`}
                   >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted/30 border border-border/85 transition-all duration-300">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted/30 border border-border/85 group-hover:border-primary/40 group-hover:text-primary transition-all duration-300">
                       <item.icon className="h-4.5 w-4.5 text-muted-foreground" />
                     </div>
                     <div className="flex-1 min-w-0">

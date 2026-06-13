@@ -52,16 +52,16 @@ const features = [
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-background overflow-hidden">
+    <div className="min-h-screen bg-transparent overflow-hidden relative">
       {/* Background effects */}
+      <div className="bg-mesh" />
       <div className="fixed inset-0 -z-10">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-cyan-500/5 rounded-full blur-3xl" />
+        <div className="premium-glow-bg top-0 left-1/4 bg-primary/20" />
+        <div className="premium-glow-bg bottom-1/4 right-1/4 bg-destructive/20" />
       </div>
 
       {/* Header */}
-      <header className="border-b border-border/40 glass">
+      <header className="border-b border-border/40 glass sticky top-0 z-50">
         <div className="mx-auto max-w-6xl flex items-center justify-between px-4 h-16">
           <Link href="/" className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/25">
@@ -105,15 +105,15 @@ export default function LandingPage() {
             The modern way to manage shared expenses. Track, split, and settle group
             costs with a beautiful, intelligent dashboard.
           </p>
-          <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+          <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row stagger-2">
             <Link href="/signup">
-              <Button size="lg" className="text-base shadow-xl shadow-primary/25 px-8">
+              <Button size="lg" className="btn-premium text-base shadow-xl shadow-primary/25 px-8 bg-gradient-to-r from-primary to-chart-3 hover:scale-105 border border-primary/50">
                 Start for Free
-                <ArrowRight className="h-5 w-5" />
+                <ArrowRight className="h-5 w-5 ml-2" />
               </Button>
             </Link>
             <Link href="/login">
-              <Button variant="outline" size="lg" className="text-base px-8">
+              <Button variant="outline" size="lg" className="text-base px-8 bg-card/40 backdrop-blur-sm border-border hover:bg-card/80 transition-colors">
                 Sign In
               </Button>
             </Link>
@@ -121,20 +121,20 @@ export default function LandingPage() {
         </div>
 
         {/* Hero visual card */}
-        <div className="mt-16 md:mt-20 relative">
-          <div className="gradient-border glass rounded-2xl p-8 md:p-12 max-w-3xl mx-auto">
+        <div className="mt-16 md:mt-20 relative stagger-3">
+          <div className="premium-card rounded-3xl p-8 md:p-12 max-w-4xl mx-auto hover-lift border-primary/20">
             <div className="grid grid-cols-3 gap-4 md:gap-8">
-              <div className="text-center">
-                <div className="text-2xl md:text-4xl font-bold text-primary">₹2.4L</div>
-                <div className="text-xs md:text-sm text-muted-foreground mt-1">Total Tracked</div>
+              <div className="text-center group">
+                <div className="text-3xl md:text-5xl font-black gradient-text group-hover:scale-110 transition-transform">₹2.4L</div>
+                <div className="text-xs md:text-sm text-muted-foreground mt-2 font-medium uppercase tracking-widest">Total Tracked</div>
               </div>
-              <div className="text-center">
-                <div className="text-2xl md:text-4xl font-bold text-emerald-400">12</div>
-                <div className="text-xs md:text-sm text-muted-foreground mt-1">Active Groups</div>
+              <div className="text-center group">
+                <div className="text-3xl md:text-5xl font-black text-chart-3 group-hover:scale-110 transition-transform">12</div>
+                <div className="text-xs md:text-sm text-muted-foreground mt-2 font-medium uppercase tracking-widest">Active Groups</div>
               </div>
-              <div className="text-center">
-                <div className="text-2xl md:text-4xl font-bold text-teal-400">98%</div>
-                <div className="text-xs md:text-sm text-muted-foreground mt-1">Settled</div>
+              <div className="text-center group">
+                <div className="text-3xl md:text-5xl font-black text-primary group-hover:scale-110 transition-transform">98%</div>
+                <div className="text-xs md:text-sm text-muted-foreground mt-2 font-medium uppercase tracking-widest">Settled</div>
               </div>
             </div>
           </div>
@@ -155,17 +155,17 @@ export default function LandingPage() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 relative z-10">
-          {features.map((feature) => (
+          {features.map((feature, i) => (
             <div
               key={feature.title}
-              className="group premium-card border-none rounded-2xl p-6"
+              className={`group premium-card border border-border/40 rounded-3xl p-8 hover-lift animate-slide-up stagger-${(i % 5) + 1}`}
             >
               <div
-                className={`inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${feature.gradient} shadow-lg mb-4`}
+                className={`inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${feature.gradient} shadow-lg mb-6 group-hover:scale-110 transition-transform duration-300`}
               >
-                <feature.icon className="h-6 w-6 text-white" />
+                <feature.icon className="h-7 w-7 text-white" />
               </div>
-              <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
+              <h3 className="text-xl font-bold mb-3">{feature.title}</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 {feature.description}
               </p>
@@ -187,9 +187,9 @@ export default function LandingPage() {
           </p>
           <div className="relative z-10">
             <Link href="/signup">
-              <Button size="lg" className="text-base shadow-xl shadow-primary/25 px-10">
+              <Button size="lg" className="btn-premium text-base shadow-xl shadow-primary/25 px-10 bg-gradient-to-r from-primary to-chart-3 hover:scale-105 border border-primary/50">
                 Get Started Free
-                <ArrowRight className="h-5 w-5" />
+                <ArrowRight className="h-5 w-5 ml-2" />
               </Button>
             </Link>
           </div>

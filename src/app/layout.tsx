@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Outfit } from "next/font/google";
 import { ThemeProvider } from "@/components/layout/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { SessionProvider } from "next-auth/react";
+import { AIAssistant } from "@/components/chat/ai-assistant";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
+const outfit = Outfit({
+  variable: "--font-outfit",
   subsets: ["latin"],
 });
 
@@ -23,7 +24,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} h-full`}>
+    <html lang="en" suppressHydrationWarning className={`${outfit.variable} h-full`}>
       <body className="min-h-full flex flex-col antialiased font-sans">
         <ThemeProvider
           attribute="class"
@@ -33,6 +34,7 @@ export default function RootLayout({
         >
           <SessionProvider>
             {children}
+            <AIAssistant />
             <Toaster />
           </SessionProvider>
         </ThemeProvider>

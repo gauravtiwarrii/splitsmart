@@ -174,6 +174,7 @@ export interface ParsedCSVRow {
   paidBy?: string;
   splitBetween?: string[];
   splitType?: string;
+  splitDetails?: string; // Raw split detail string (e.g., "Rohan 700; Priya 400; Meera 400")
   category?: string;
   notes?: string;
   raw: Record<string, string>; // Original unparsed row data

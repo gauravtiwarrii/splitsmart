@@ -68,10 +68,10 @@ function NavLink({
     <Link
       href={item.href}
       className={cn(
-        "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
+        "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-300 hover-lift",
         isActive
-          ? "bg-primary/10 text-primary shadow-sm"
-          : "text-muted-foreground hover:bg-accent hover:text-foreground",
+          ? "bg-primary/15 text-primary shadow-sm border border-primary/20"
+          : "text-muted-foreground hover:bg-accent/50 hover:text-foreground border border-transparent",
         collapsed && "justify-center px-2"
       )}
     >
@@ -197,8 +197,11 @@ function SidebarContent({
 /* ---------- Desktop Sidebar ---------- */
 export function Sidebar() {
   return (
-    <div className="hidden md:block w-full border border-border/70 rounded-xl bg-card p-2 shadow-sm overflow-hidden">
-      <SidebarContent collapsed={false} />
+    <div className="hidden md:block w-full h-[calc(100vh-8rem)] sticky top-24 border border-border/40 rounded-3xl bg-card/40 backdrop-blur-3xl shadow-xl p-2 overflow-hidden relative z-10 hover:border-primary/20 transition-colors duration-500">
+      <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
+      <div className="relative z-10 h-full">
+        <SidebarContent collapsed={false} />
+      </div>
     </div>
   );
 }

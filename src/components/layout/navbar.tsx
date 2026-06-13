@@ -62,9 +62,10 @@ export function Navbar() {
   const { data: session } = useSession();
 
   return (
-    <header className="sticky top-0 z-40 h-16 border-b border-border glass-strong px-4">
-      <div className="w-full max-w-5xl mx-auto h-full flex items-center justify-between gap-4">
-        {/* Mobile hamburger */}
+    <div className="px-4 md:px-8 lg:px-12 xl:px-16 pt-4 sticky top-0 z-40">
+      <header className="h-16 glass-nav rounded-2xl px-4 w-full transition-all duration-300">
+        <div className="w-full h-full flex items-center justify-between gap-4">
+          {/* Mobile hamburger */}
         <MobileSidebar />
 
         {/* Left: Title and breadcrumbs */}
@@ -124,7 +125,8 @@ export function Navbar() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
-    </header>
+        </div>
+      </header>
+    </div>
   );
 }

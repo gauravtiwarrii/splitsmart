@@ -24,18 +24,32 @@ SplitSmart is a premium, corporate-grade shared expenses manager designed with a
 1. **Authentication & Protection**
    * Secure registration, login, and sessions using NextAuth v5.
    * Route protection enforced at the Edge runtime using Next.js Middleware (cookie-based session validation).
-2. **Flexible Splits**
+2. **Machine Learning AI Assistant**
+   * **Local NLP Engine**: Add expenses using natural language (e.g., *"Raj paid ₹1500 for Dominos and Aisha and Priya share it"*). Extracts entities, amounts, and intents locally.
+   * **Naive Bayes Categorization**: Automatically predicts and categorizes expenses based on historical descriptions.
+   * **Predictive Forecasting**: Uses Linear Regression to forecast the group's expected monthly spending on the dashboard.
+   * **Z-Score Outlier Detection**: Statistical variance model to mathematically flag anomalous expenses.
+3. **Flexible Splits**
    * Equal splits, exact splits, percentages (totaling 100%), and shares (custom ratios).
    * Supports active and inactive timelines (roommates only pay for expenses logged during their active duration).
-3. **Multi-Currency Converter**
+4. **Multi-Currency Converter**
    * Support for **INR (₹)** and **USD ($)** with live rate mappings and historical overrides.
-4. **Greedy Debt Simplification**
+5. **Greedy Debt Simplification**
    * Minimizes the total number of transactions required to settle balances within a group. Matches the highest debtor with the highest creditor recursively.
-5. **CSV Import Wizard**
+6. **CSV Import Wizard**
    * Stepper-based workflow: Upload ➡️ Map Columns ➡️ Review Anomalies ➡️ Confirm ➡️ PDF Summary.
    * Runs **12 anomaly detection rules** (duplicates, invalid splits, transactions outside member active dates, fuzzy spelling checks using Levenshtein distance).
-6. **Immutable Audit Logs**
+7. **Immutable Audit Logs**
    * Chronological ledger of all system edits (CREATE, UPDATE, DELETE, SETTLE, IMPORT) tracking JSON diff changes (`oldValue` vs `newValue`).
+
+---
+
+## 🎨 Design System (Obsidian & Gold)
+
+SplitSmart features a bespoke, highly premium aesthetic designed to mimic high-end corporate cards and modern fintech.
+* **Colors**: True "Obsidian" (`#050505`) backgrounds, "Champagne Gold" metallic accents, and "Platinum" text.
+* **Layout**: Fluid, uncompressed layouts that scale beautifully across ultra-wide monitors.
+* **Glassmorphism**: Ultra-subtle frosted glass cards (`backdrop-blur-40px`) with animated radial mesh background gradients.
 
 ---
 
